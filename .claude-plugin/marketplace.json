@@ -9,9 +9,11 @@
   "plugins": [
     {
       "name": "rmine-skills",
-      "description": "Turns a Redmine ticket into a reviewed frontend/backend effort estimate.",
+      "description": "Turns a Redmine ticket into a reviewed frontend/backend effort estimate, and measures past estimates against hours actually logged.",
       "source": "./",
-      "category": "productivity"
+      "category": "productivity",
+      "keywords": ["redmine", "estimation", "project-management", "rmine"],
+      "license": "MIT"
     }
   ]
 }

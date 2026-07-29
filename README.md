@@ -13,6 +13,17 @@ above: multi-step workflows that read a ticket and do something useful with it.
 | `/estimate <issue>` | Turns a Redmine ticket into a frontend/backend effort breakdown in hours and points — gated on spec completeness, priced against the actual codebase, then independently reviewed. |
 | `/calibrate <paths>` | Compares past estimates against hours actually logged, to find out whether the rubric is systematically optimistic. Reports drift *and* whether the data is good enough to act on. |
 
+`/estimate` runs three subagents that ship with the plugin, each carrying its own
+instructions rather than being briefed by the caller:
+
+| Agent | Role |
+|---|---|
+| `spec-auditor` | Judges whether the spec can be estimated. Blocks only on gaps that move the hours, and never produces hours itself. |
+| `effort-estimator` | Greps the product repo, then prices each line item against the real services and tables it found. |
+| `estimate-validator` | Reviews the finished estimate without seeing how it was derived, so it isn't anchored to the estimator's reasoning. |
+
+None of the three can write or edit files.
+
 ## Install
 
 ```sh

@@ -2,5 +2,7 @@
 # and customers. This repo is public; these files never leave your machine.
 *.local.md
 
-# Generated estimates
-estimate-*.md
+# Generated estimates. Anchored to the repo root on purpose — an unanchored
+# pattern also matches agents/estimate-validator.md, which took a commit to
+# notice. Real estimates land in the product repo's cwd, not here.
+/estimate-*.md
