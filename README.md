@@ -45,8 +45,9 @@ Out of the box the skill estimates from `skills/estimate/references/rubric.md`
 
 It gets substantially better when it can read your own past estimates. Put them
 in `skills/estimate/references/samples.local.md`; the closest comparable sample
-beats any lookup table. That path is gitignored, because real estimates name
-internal services, tickets and customers and this repo is public.
+beats any lookup table. See `samples.example.md` in that directory for the
+required shape — each entry needs a Redmine issue URL and a `Total (...)` line,
+which is also what `/calibrate` keys on later.
 
 If your estimates live in a Word document:
 
@@ -55,7 +56,14 @@ python3 skills/estimate/scripts/docx2txt.py estimates.docx \
   > skills/estimate/references/samples.local.md
 ```
 
-The skill runs without it, and says so in its output when it's missing.
+Indentation is preserved, which matters: an indented line without hours is a
+sub-detail of the priced item above it.
+
+**`samples.local.md` is gitignored**, because real estimates name internal
+services, tickets and customers and this repo is public. The consequence is that
+it does not travel with a clone or a plugin install — each person populates it
+themselves, or you distribute it out of band. The skill runs without it and says
+so in its output.
 
 ## Running it
 
