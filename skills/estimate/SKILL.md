@@ -43,7 +43,7 @@ The spec itself lives in one of four places. Check in this order:
 2. **An attached document.**
    ```sh
    rmine issue attachments <id> --download <scratch-dir>
-   python3 <skill-dir>/scripts/docx2txt.py <scratch-dir>/<file>.docx
+   python3 "${CLAUDE_PLUGIN_ROOT}/skills/estimate/scripts/docx2txt.py" <scratch-dir>/<file>.docx
    ```
    The script handles `.docx` only and exits non-zero on anything else; when it
    does, ask for the text rather than continuing with nothing.
@@ -95,9 +95,10 @@ user's attention on it.
 Launch the **`effort-estimator`** agent from the repo the work lands in. Pass it:
 
 - the spec text
-- the path to `references/rubric.md`
-- the path to `references/samples.local.md` if it exists — if it doesn't, say so
-  in the final output, because calibration is materially weaker without it
+- `${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/rubric.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/samples.local.md` if it
+  exists — if it doesn't, say so in the final output, because calibration is
+  materially weaker without it
 - any answers you got from the `WORTH ASKING` questions
 
 Its definition already covers grepping before pricing, the calibration order,
@@ -105,14 +106,18 @@ and the output format. Don't re-explain them.
 
 ## 4. Validator
 
-Launch the **`estimate-validator`** agent with the spec and the finished
-estimate **only**.
+Write the spec and the finished estimate to two files, then launch the
+**`estimate-validator`** agent with **nothing in its prompt but those two
+paths**.
 
-**Never pass the estimator's reasoning, greps, or intermediate notes.** This is
-the one check in the pipeline that isn't anchored to how the estimate was
-derived, and that property exists only as long as you don't hand it the
-derivation. Its own definition tells it to report the leak if you do — take that
-as a real failure, not a formality.
+Passing paths rather than inline content is the whole discipline here. Inline
+content invites summarising, and summarising is how the estimator's reasoning
+leaks in — at which point this stops being an independent check and becomes an
+expensive agreement. Two paths and a sentence naming which is which.
+
+**Never pass the estimator's reasoning, greps, or intermediate notes**, in any
+form. Its definition tells it to report the leak if you do; treat that as a real
+failure, not a formality.
 
 ## 5. Reconcile and write
 
@@ -137,7 +142,18 @@ reader who doesn't see them will over-trust it:
 
 ## Setup
 
-`samples.local.md` is gitignored and absent on a fresh clone. Without it the
-skill runs on `rubric.md` alone. To populate it, extract your own past
-estimates into `references/samples.local.md` — the closest comparable sample
-outweighs any calibration table.
+`samples.local.md` is gitignored and **absent on a fresh clone or a fresh plugin
+install**, so a new team member gets the generic rubric only. Without it, say so
+in the output — the estimate deserves less trust.
+
+To populate it, put past estimates at
+`${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/samples.local.md`. See
+`references/samples.example.md` for the shape. From a Word document:
+
+```sh
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/estimate/scripts/docx2txt.py" estimates.docx \
+  > "${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/samples.local.md"
+```
+
+Each entry needs a Redmine issue URL and a `Total (...)` line — that's what
+`/calibrate` keys on later.

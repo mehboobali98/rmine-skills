@@ -10,7 +10,7 @@ estimates — including any systematic error. This skill is the only thing that
 can tell you whether those estimates were any good.
 
 ```sh
-python3 <skill-dir>/scripts/actuals.py <path>...
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/calibrate/scripts/actuals.py" <path>...
 ```
 
 Accepts a samples file holding many estimates, individual `estimate-<id>.md`
