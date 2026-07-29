@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "rmine-skills",
+  "description": "Workflow skills for Redmine, built on the rmine CLI.",
+  "owner": {
+    "name": "Mehboob Ali",
+    "url": "https://github.com/mehboobali98"
+  },
+  "plugins": [
+    {
+      "name": "rmine-skills",
+      "description": "Turns a Redmine ticket into a reviewed frontend/backend effort estimate.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
