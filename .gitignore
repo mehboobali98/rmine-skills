@@ -1,0 +1,6 @@
+# Private calibration data — real estimates naming internal services, tickets
+# and customers. This repo is public; these files never leave your machine.
+*.local.md
+
+# Generated estimates
+estimate-*.md
