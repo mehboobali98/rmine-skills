@@ -4,6 +4,39 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.3.0
+
+### Added
+
+- **`scripts/check_format.py`** — a deterministic checker for the house format:
+  section and total arithmetic, `points = round(hours / 4)` half-up, 0.25
+  granularity, the required header lines, `Assumptions:` above `Breakdown:`,
+  `Total` as the literal last line, `N/A` rather than an omitted layer, and a
+  `Discussions` buffer whose gaps are actually named. `/estimate` runs it before
+  reporting done, and `estimate-validator` runs it first so it can spend its
+  attention on the judgment checks instead of re-deriving arithmetic.
+  `test_check_format.py` covers it, 15 cases.
+- **Provenance and confidence on every estimate.** New required header lines:
+  `Estimated by`, `Date` (ISO), and `Confidence: High|Medium|Low` with the
+  reason next to it. Confidence is graded on how much of the estimate came from
+  the anchor table rather than on how the estimator feels, so a point number
+  can't be read as more certain than the spec behind it. `Estimated by` and
+  `Date` also give `/calibrate` per-person drift and make a stale estimate
+  visible.
+
+### Changed
+
+- **`spec-auditor` now attaches a recommended answer to every `WORTH ASKING`
+  question** (`Q:` / `A:` pairs), and `/estimate` puts it first in
+  AskUserQuestion as `(Recommended)`. A bare question asks the reader to do the
+  thinking; a question with a recommendation asks them to correct it, which is
+  cheaper to answer and likelier to get a reply. Unanswered questions now carry
+  their recommendation into `Assumptions:` instead of vanishing. Borrowed from
+  the `grilling` skill in mattpocock/skills.
+- An `INCOMPLETE` verdict now points at fixing the spec — a grilling or
+  spec-interview skill — rather than just stopping. Overriding it drops
+  `Confidence` to `Low`.
+
 ## 0.2.0
 
 Prepared the plugin for team-wide use. **The estimate pipeline no longer reads a

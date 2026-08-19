@@ -107,15 +107,23 @@ that primes it to produce hours.
 It returns `READY` or `INCOMPLETE`, plus blocking gaps, non-blocking gaps, and
 anything `WORTH ASKING`.
 
-**If `INCOMPLETE`:** print the blocking gaps, stop, don't estimate. The user can
-override by saying so, in which case each gap becomes a stated assumption and
-the `Discussions` line widens.
+**If `INCOMPLETE`:** print the blocking gaps, stop, don't estimate. The right
+next move is usually fixing the spec rather than estimating it anyway — if the
+user has a grilling or spec-interview skill installed, point at it. The user can
+also override by saying so, in which case each gap becomes a stated assumption,
+the `Discussions` line widens, and `Confidence` drops to `Low`.
 
 **If it returned `WORTH ASKING` items:** ask them with AskUserQuestion *before*
 estimating, batched, at most three. A gap a tech lead closes in one sentence is
 worth 30 seconds of their attention and can move a line item 3x. Anything the
 codebase can answer, let the estimator answer by reading code — don't spend the
 user's attention on it.
+
+Each item arrives as a `Q:`/`A:` pair. **Put the auditor's recommended answer
+first, labelled `(Recommended)`.** That turns "do my thinking for me" into
+"correct me if I'm wrong" — much cheaper to answer, and it means a user who
+skips the question still gets a stated assumption rather than a silent one.
+Whatever they don't answer, carry the recommendation into `Assumptions:`.
 
 ## 3. Estimator
 
@@ -160,6 +168,24 @@ Print the breakdown, then write it to `./estimates/estimate-<id>.md` in the
 product repo, creating the directory if it doesn't exist. Keep the format in
 `rubric.md` exactly — `Total (Z hrs ~ P points)` is the literal last line so a
 later estimate-vs-actual pass can parse a directory of these without guessing.
+
+Fill the header from what you already have: `Estimated by` is the name from the
+`rmine whoami` you ran in preflight, `Date` is today in `YYYY-MM-DD`, and
+`Confidence` is graded on how much of the estimate came from the rubric's
+anchor table — see `## Confidence` there. Never emit a bare grade without the
+reason next to it.
+
+Then check it:
+
+```sh
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/estimate/scripts/check_format.py" ./estimates/estimate-<id>.md
+```
+
+**Fix whatever it reports before telling the user you're done.** It only checks
+things that are deterministically true or false — arithmetic, the points
+formula, the required headers, the last-line contract. A file that fails it
+drops out of the calibration corpus silently, which is the one failure nobody
+notices until `/calibrate` returns less than it should.
 
 **Tell the user to commit it.** That directory is the team's estimate corpus
 and the only input `/calibrate` has. `/calibrate` needs 20+ tickets before its

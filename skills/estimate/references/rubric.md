@@ -19,6 +19,9 @@ for the bar a calibration result has to clear.
 ```
 Task: <task name>
 Redmine: <issue URL>
+Estimated by: <name>
+Date: <YYYY-MM-DD>
+Confidence: <High|Medium|Low> — <the one thing driving it>
 Assumptions:
   <what the number depends on — whether AI assistance was applied, linked
    tickets treated as shipped, non-blocking gaps priced into Discussions,
@@ -49,6 +52,33 @@ Rules that hold on every estimate:
   says "considered, nothing needed"; a missing heading says "forgot".
 - Sub-details sit under a priced line item without prices of their own — they
   justify the number, they don't subdivide it.
+- **The header lines are all required.** `check_format.py` enforces every rule
+  in this section, so an estimate that drifts fails loudly instead of silently
+  dropping out of the calibration corpus.
+
+## Confidence
+
+A total is a point number, and a point number reads as more certain than the
+spec it came from. The `Confidence:` line is what stops that, and it is graded
+on **how much of the estimate came from the anchor table** rather than on how
+the estimator feels:
+
+- **High** — nearly every line item priced from a matching anchor row, against
+  an existing in-repo pattern the estimator read.
+- **Medium** — a few line items had no close anchor row, or a pattern the work
+  depends on couldn't be confirmed in the codebase.
+- **Low** — a `Discussions` line was needed, or several line items are
+  judgment rather than calibration. A Low estimate is a range presented as a
+  number; say so when handing it to anyone.
+
+Always name the one thing driving the grade. `Confidence: Medium` alone tells
+a reader nothing they can act on; `Confidence: Medium — no anchor row covers
+the third-party sync, priced from the 4+ single-value anchor` tells them
+exactly which line to push back on.
+
+Who and when are there for the same reason plus one more: `/calibrate` can
+read per-person drift off `Estimated by`, and `Date` is what makes a stale
+estimate visible when the ticket has moved on since.
 
 ## The non-development lines
 

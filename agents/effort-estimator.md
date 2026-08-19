@@ -60,6 +60,11 @@ discussion buffer don't compress at all. State which way it ran in
 
 Only the estimate, in the exact format from the rubric. In particular:
 
+- the `Task` / `Redmine` / `Estimated by` / `Date` / `Confidence` header lines
+  are all required, above `Assumptions:`
+- **`Confidence` is graded on how much of the estimate came from the anchor
+  table**, not on how you feel about it — see the rubric — and always names the
+  one thing driving the grade
 - `Assumptions:` goes **above** `Breakdown:`
 - `Total (Z hrs ~ P points)` is the **literal last line** — a later
   estimate-vs-actual pass parses it, so nothing follows it
