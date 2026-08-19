@@ -31,51 +31,75 @@ None of the three can write or edit files.
 /plugin install rmine-skills
 ```
 
-Requires `rmine` on your `PATH` with a configured profile:
+Prerequisites, all of which `/estimate` checks before it starts:
 
-```sh
-go install github.com/mehboobali98/rmine/cmd/rmine@latest
-rmine config init
-```
+1. **`rmine` on your `PATH`, with a configured profile.**
 
-## Calibrating `/estimate`
+   ```sh
+   go install github.com/mehboobali98/rmine/cmd/rmine@latest
+   rmine config init
+   rmine whoami          # should print your Redmine user
+   ```
 
-Out of the box the skill estimates from `skills/estimate/references/rubric.md`
-— a generic Rails/React rubric with hour anchors for recurring work.
+2. **Google Drive connected**, if your specs live in Google Docs — which is the
+   most common case. Without it the skill asks you to paste the spec text
+   instead of guessing from the ticket subject.
 
-It gets substantially better when it can read your own past estimates. Put them
-in `skills/estimate/references/samples.local.md`; the closest comparable sample
-beats any lookup table. See `samples.example.md` in that directory for the
-required shape — each entry needs a Redmine issue URL and a `Total (...)` line,
-which is also what `/calibrate` keys on later.
+3. **`python3`**, for the `.docx` spec extractor and the `/calibrate` script.
+   Stdlib only; nothing to install.
 
-If your estimates live in a Word document:
+That's the whole setup. There is no calibration file to populate — the rubric
+ships with the plugin, so everyone estimates against the same numbers from
+their first run.
 
-```sh
-python3 skills/estimate/scripts/docx2txt.py estimates.docx \
-  > skills/estimate/references/samples.local.md
-```
+## Calibration
 
-Indentation is preserved, which matters: an indented line without hours is a
-sub-detail of the priced item above it.
+`/estimate` prices against `skills/estimate/references/rubric.md` — the house
+output format, backend and frontend checklists, and a table of hour anchors for
+recurring work, derived from real estimates against this team's Rails + React
+product.
 
-**`samples.local.md` is gitignored**, because real estimates name internal
-services, tickets and customers and this repo is public. The consequence is that
-it does not travel with a clone or a plugin install — each person populates it
-themselves, or you distribute it out of band. The skill runs without it and says
-so in its output.
+**The rubric is shared policy, not personal preference.** It ships with the
+plugin, so a teammate's estimate and yours are calibrated identically. Changing
+an anchor moves everyone's numbers, so changes go through a PR with the
+reasoning stated — ideally backed by a `/calibrate` run.
+
+Two things the rubric is deliberately honest about, and which anyone quoting a
+number to a customer should know:
+
+- The anchors were derived from **estimates, not outcomes**. They reproduce how
+  those estimates were made, systematic error included.
+- The AI-assistance compression model is **a judgment about the nature of the
+  work, not a measurement**. The direction is sound; the magnitude is unproven.
+
+`/calibrate` is what closes that loop. See below.
+
+`skills/estimate/references/format-examples.md` sits alongside the rubric with
+two worked estimates showing the required shape and the level of specificity
+expected in a line item. Its numbers are invented on purpose — it teaches
+format, never pricing.
 
 ## Running it
 
-Run `/estimate` **from inside the repo the work will land in** — the estimator
-greps for the real services and tables a change touches before pricing
+Run `/estimate <issue>` **from inside the repo the work will land in** — the
+estimator greps for the real services and tables a change touches before pricing
 anything, which is most of the difference between an estimate and a guess.
 
-Specs held in Google Docs need Google Drive access connected; otherwise the
-skill asks you to paste the text.
+Estimates are written to `./estimates/estimate-<id>.md` in that repo. **Commit
+them.** That directory is the team's estimate corpus and the only input
+`/calibrate` has:
 
-Estimates are written to `./estimate-<id>.md`. Nothing is written back to
-Redmine.
+```sh
+/calibrate estimates/
+```
+
+`/calibrate` matches each estimate to the hours actually logged against its
+ticket and reports drift — but it needs 20+ finished tickets before it will
+recommend touching an anchor, and it is written to say "the data is too noisy
+to act on" rather than hand you a confident multiplier built from four tickets.
+An uncommitted estimate on one laptop never counts toward that.
+
+Nothing is written back to Redmine.
 
 ## License
 

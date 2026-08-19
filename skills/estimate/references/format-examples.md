@@ -1,34 +1,37 @@
-# Calibration samples — format example
+# Format examples
 
-**This file is an example, not calibration data.** The numbers below are made up.
-Copy the shape into `samples.local.md` (gitignored) with your own real
-estimates; the skill reads that file, not this one.
+Two worked estimates showing the house format. **The numbers are invented** —
+they are here to demonstrate structure and specificity, not to calibrate
+anything. Calibration lives in the anchor table in `rubric.md`.
 
-Why it matters: the estimator anchors on the closest comparable past estimate
-before it touches the anchor table in `rubric.md`. Real samples are the single
-biggest quality lever available, and they're also the reason the file is
-gitignored — real estimates name internal services, tickets and customers.
+Read these for three things:
 
-Two things each entry must have, because `/calibrate` keys on them later:
+- **Shape.** Section headings, where `Assumptions:` sits, `Total (...)` as the
+  literal last line, `N/A` for a layer that was considered and not needed.
+- **Specificity.** Every line item names a real thing — a service, a table, a
+  generator. `Export service following the existing CSV exporter pattern` is a
+  line item; `Update the service` is a guess with a number attached.
+- **Indentation.** An indented line without hours is a sub-detail of the priced
+  item above it, not a line item of its own. Sub-details justify a number, they
+  don't subdivide it.
 
-- a **Redmine issue URL**, so estimates can be matched to logged time
-- a **`Total (...)` line**, as the last line of the entry
-
-Indentation carries meaning: an indented line without hours is a sub-detail of
-the priced item above it, not a line item of its own.
+Each entry carries a Redmine issue URL and a `Total (...)` line because
+`/calibrate` keys on exactly those two things when it matches an estimate to
+the hours logged against its ticket.
 
 **Don't run `/calibrate` against this file.** Only the `/issues/<id>` part of a
 URL is read, never the host, so the invented IDs below get looked up against
-whatever Redmine profile is active — and if tickets with those numbers happen to
-exist, you'll get real time entries for unrelated work.
+whatever Redmine profile is active — and if tickets with those numbers happen
+to exist, you'll get real time entries for unrelated work.
 
 ---
-
-March'26
 
 Bulk export for widgets
 Task: Allow exporting widgets from the listing screen
 Redmine: https://redmine.example.com/issues/12345
+Assumptions:
+  AI-assisted development. The CSV exporter pattern is treated as shipped and
+  reusable. Least confident in the background-job threshold.
 Breakdown:
 Backend (3.5 hrs)
   Export service following the existing CSV exporter pattern (2 hr)
@@ -48,6 +51,10 @@ Total (8.5 hrs ~ 2 points)
 Widget audit trail
 Task: Track who changed a widget and when
 Redmine: https://redmine.example.com/issues/12346
+Assumptions:
+  AI-assisted development. No frontend surface in scope — the history tab is
+  ticket 12350 and is priced there, not here. Retention policy unspecified and
+  priced into Discussions.
 Breakdown:
 Backend (5 hrs)
   Schema change (0.5 hr)

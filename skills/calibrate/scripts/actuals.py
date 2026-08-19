@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Compare estimated hours against hours actually logged in Redmine.
 
-Reads estimate files (or a samples file holding many estimates), pulls the
+Reads estimate files (or any single file holding many estimates), pulls the
 matching time entries via `rmine time list`, and reports the ratio per ticket
 plus aggregate drift.
 
-    actuals.py samples.local.md
-    actuals.py estimate-*.md
+    actuals.py estimates/
+    actuals.py estimates/estimate-54039.md
     actuals.py --json estimates/
 
 Stdlib only; shells out to rmine for the API access and auth.
@@ -61,7 +61,7 @@ def parse_total(line):
 def parse_estimates(path):
     """Yield (issue_id, estimated_hours) for every estimate found in a file.
 
-    Works for a single estimate file and for a samples file holding many:
+    Works for a single estimate file and for one file holding many:
     an issue URL claims every Total line until the next issue URL appears.
     """
     current = None
@@ -136,7 +136,7 @@ def collect(paths):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("paths", nargs="+", help="estimate files, samples file, or a directory")
+    ap.add_argument("paths", nargs="+", help="an estimates/ directory, individual estimate files, or one file holding many")
     ap.add_argument("--profile", help="rmine profile to use")
     ap.add_argument("--json", action="store_true", help="emit JSON instead of a table")
     args = ap.parse_args()
