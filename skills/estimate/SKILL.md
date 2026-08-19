@@ -23,6 +23,33 @@ Run this from inside the repo the work will land in. Without the codebase the
 estimate degrades to generic guesswork — say so plainly rather than pretending
 otherwise.
 
+## 0. Preflight
+
+Check these before touching the ticket. Each one fails silently or confusingly
+halfway through otherwise, which is a bad first run for someone new to the
+plugin.
+
+```sh
+rmine whoami
+```
+
+One call covers all three failure modes: `rmine` missing from `PATH`, no
+profile configured, or credentials that don't authenticate. If it fails, stop
+and point at the fix — `go install github.com/mehboobali98/rmine/cmd/rmine@latest`
+then `rmine config init` — rather than continuing into an error.
+
+Then confirm two things about where you are:
+
+- **You are inside the product repo**, not this plugin's repo and not a home
+  directory. The estimator greps for real services and tables; run anywhere
+  else and it prices from imagination.
+- **AI-assistance is on or off.** The rubric defaults to on. If the user hasn't
+  said, assume on and record it in `Assumptions:` — don't ask, but never leave
+  it unstated, because the same ticket prices differently either way.
+
+Google Docs specs additionally need Google Drive connected. You'll find out in
+step 1; don't pre-check it.
+
 ## 1. Get the spec
 
 Accept a Redmine URL or a bare issue ID.
@@ -95,18 +122,23 @@ user's attention on it.
 Launch the **`effort-estimator`** agent from the repo the work lands in. Pass it:
 
 - the spec text
-- `${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/rubric.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/samples.local.md` if it
-  exists — if it doesn't, say so in the final output, because calibration is
-  materially weaker without it
+- `${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/rubric.md` — the format and
+  the calibration anchors
+- `${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/format-examples.md` — two
+  worked estimates showing the shape and the level of specificity. **Their
+  numbers are invented**; say so when you pass the path, so nothing anchors to
+  them
+- whether AI-assistance is on or off
 - any answers you got from the `WORTH ASKING` questions
 
-Its definition already covers grepping before pricing, the calibration order,
-and the output format. Don't re-explain them.
+Its definition already covers grepping before pricing, pricing against the
+anchor table, and the output format. Don't re-explain them.
 
 ## 4. Validator
 
-Write the spec and the finished estimate to two files, then launch the
+Write the spec and the finished estimate to two files **in a scratch
+directory, not the product repo** — they are pipeline intermediates and
+committing them would pollute the estimate corpus. Then launch the
 **`estimate-validator`** agent with **nothing in its prompt but those two
 paths**.
 
@@ -124,36 +156,43 @@ failure, not a formality.
 Apply the validator's findings. Where you disagree with it, say why in one
 line rather than silently dropping it.
 
-Print the breakdown, then write it to `./estimate-<id>.md`. Keep the format in
+Print the breakdown, then write it to `./estimates/estimate-<id>.md` in the
+product repo, creating the directory if it doesn't exist. Keep the format in
 `rubric.md` exactly — `Total (Z hrs ~ P points)` is the literal last line so a
 later estimate-vs-actual pass can parse a directory of these without guessing.
+
+**Tell the user to commit it.** That directory is the team's estimate corpus
+and the only input `/calibrate` has. `/calibrate` needs 20+ tickets before its
+own bar for acting on a result is met, and an uncommitted file on one laptop
+never reaches it. An estimate that isn't committed is an estimate the team
+can't learn from.
 
 Include a short **Assumptions** block, placed **above `Breakdown:`** so the
 total stays last. Assumptions change how the number should be read, and a
 reader who doesn't see them will over-trust it:
 
-- that the estimate assumes AI-assisted development (or doesn't, if the rubric
-  section was turned off)
+- whether the estimate assumes AI-assisted development
 - which linked tickets were treated as shipped foundations vs dependencies
 - anything the auditor flagged non-blocking that you priced into Discussions
 - which parts you're least confident in
-- whether `samples.local.md` was available — without it, calibration is
-  materially weaker and the number deserves less trust
+- any line item priced with no close match in the rubric's anchor table — those
+  are the estimator's judgment rather than the team's calibration, and deserve
+  less trust than the rest of the number
 
-## Setup
+## Calibration
 
-`samples.local.md` is gitignored and **absent on a fresh clone or a fresh plugin
-install**, so a new team member gets the generic rubric only. Without it, say so
-in the output — the estimate deserves less trust.
+Everything the estimate is priced against lives in
+`${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/rubric.md`, which ships with
+the plugin. There is nothing for a new team member to set up, and no local file
+to populate — install the plugin and the calibration is the same one everyone
+else is using.
 
-To populate it, put past estimates at
-`${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/samples.local.md`. See
-`references/samples.example.md` for the shape. From a Word document:
+That is deliberate. A shared rubric edited through PRs means the whole team is
+wrong in the same direction, which `/calibrate` can measure and correct. Per
+person calibration files drift apart silently and can't be measured at all.
 
-```sh
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/estimate/scripts/docx2txt.py" estimates.docx \
-  > "${CLAUDE_PLUGIN_ROOT}/skills/estimate/references/samples.local.md"
-```
-
-Each entry needs a Redmine issue URL and a `Total (...)` line — that's what
-`/calibrate` keys on later.
+The anchors were derived from real estimates against this product, but from
+**estimates rather than outcomes** — see `## Known bias` in the rubric. Run
+`/calibrate` against the committed `estimates/` directory to measure them
+against hours actually logged; it will tell you when there's enough signal to
+change anything, and default to changing nothing until then.

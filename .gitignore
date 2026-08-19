@@ -1,8 +1,12 @@
-# Private calibration data — real estimates naming internal services, tickets
-# and customers. This repo is public; these files never leave your machine.
+# Private files. This repo is public and shared with the team; anything named
+# *.local.md stays on the machine that created it. Kept as a guard even though
+# nothing in the plugin reads a .local.md file any more — a stray one holding
+# real estimates would name internal services, tickets and customers.
 *.local.md
 
-# Generated estimates. Anchored to the repo root on purpose — an unanchored
+# Stray estimates. Real ones land in the product repo's ./estimates/ directory
+# and are committed there. Anchored to the repo root on purpose — an unanchored
 # pattern also matches agents/estimate-validator.md, which took a commit to
-# notice. Real estimates land in the product repo's cwd, not here.
+# notice.
 /estimate-*.md
+/estimates/

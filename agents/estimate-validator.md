@@ -28,8 +28,11 @@ You may read the codebase to verify claims. You never modify it.
    tenants, ability/permissions, serializer, list view preference, redux slice,
    search integration. Backfill and search are the two most often forgotten.
    Distinguish *correctly absent* from *forgotten* and say which.
-5. **Pricing** against the closest comparable past estimate. Call out anything
-   materially over or under, with the comparable named.
+5. **Pricing** against the rubric's calibration anchors
+   (`skills/estimate/references/rubric.md`). Call out anything materially over
+   or under, naming the anchor row it should have priced from. Work with no
+   close match in the table should say so in the line item — flag it when it
+   silently borrows a row that doesn't fit.
 6. **Scope in the spec with no line item at all.**
 7. **Work owned by a linked ticket, priced here too** — the same hours
    estimated twice across two tickets.

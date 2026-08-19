@@ -1,9 +1,18 @@
 # Estimation rubric
 
-The house format and calibration. Everything here is derived from a body of
-real estimates for a Rails + React product; `samples.local.md`, when present,
-holds those estimates verbatim and is the stronger signal — this file is the
-fallback and the set of rules the samples never state out loud.
+The house format and the team's calibration. This file is the single source of
+truth for both — the estimator prices against the anchor table below, and
+`format-examples.md` shows the shape the output must take.
+
+**Scope: the Rails + React product this team works on.** The anchors were
+derived from a body of real estimates against that codebase. They are not
+industry averages and they do not transfer to a different repo — see
+`## Known bias` at the bottom before trusting a number produced elsewhere.
+
+**Owner:** this rubric is shared policy, not personal preference. Changing an
+anchor changes everyone's numbers, so changes go through a PR with the
+reasoning stated, ideally backed by a `/calibrate` run. See `## Known bias`
+for the bar a calibration result has to clear.
 
 ## Output format
 
@@ -11,9 +20,9 @@ fallback and the set of rules the samples never state out loud.
 Task: <task name>
 Redmine: <issue URL>
 Assumptions:
-  <what the number depends on — AI assistance, linked tickets treated as
-   shipped, non-blocking gaps priced into Discussions, least-confident areas,
-   whether samples.local.md was available>
+  <what the number depends on — whether AI assistance was applied, linked
+   tickets treated as shipped, non-blocking gaps priced into Discussions,
+   least-confident areas>
 Breakdown:
 Backend (X hrs)
   <line item> (N hr)
@@ -26,7 +35,7 @@ Discussions + Additional cases: B hours        ← only when the spec is fuzzy
 Total (Z hrs ~ P points)
 ```
 
-Rules that hold across every sample:
+Rules that hold on every estimate:
 
 - **`Total (Z hrs ~ P points)` is the literal last line.** Downstream tooling
   parses it. Don't reword it, don't add a summary after it.
@@ -89,8 +98,9 @@ multi-tenant table needs a story for the tenants that already exist.
 
 ## Calibration anchors
 
-Typical hours for recurring work. Anchor against the closest sample first;
-these are the fallback when nothing comparable exists.
+Typical hours for recurring work. This table is the calibration — price
+against it directly, and say so in the line item when a piece of work has no
+close match here.
 
 The **Compresses** column is how much AI-assisted coding is expected to reduce
 the work — see the section below for how to apply it.
@@ -115,9 +125,14 @@ the work — see the section below for how to apply it.
 
 ## AI-assisted development
 
-**Assumption: the team codes with an AI assistant day to day.** If that isn't
-true, ignore this section and use the anchor ranges as written — that is what
-they were derived from.
+**This section is a switch, and the caller decides which way it is set.** The
+default is on: the team codes with an AI assistant day to day. When it is off,
+ignore this section entirely and use the anchor ranges as written — unmodified
+is what they were derived from.
+
+Either way, the `Assumptions:` block must say which way it ran. Two estimates
+for the same ticket differ materially depending on this, and a reader who
+can't tell which they're holding will misread the number.
 
 Assistance does not scale work down uniformly, so there is no single multiplier
 to apply to a total. It compresses **pattern-following work** — code where the
@@ -160,10 +175,13 @@ that's a sign the spec is vague there, and it belongs in the Discussions line.
 ## Known bias
 
 These anchors encode one estimator's calibration on one codebase over a few
-months. They are not industry averages and won't transfer.
+months. They are not industry averages and won't transfer to another repo.
 
 They were derived from **estimates, not outcomes** — which means they reproduce
-how that estimator estimates, including any systematic error.
+how that estimator estimated, including any systematic error. Shared across a
+team, that error is now shared too: everyone is wrong in the same direction,
+which is easier to detect and correct than everyone being wrong differently,
+but it is still wrong until measured.
 
 Run `/calibrate` to measure it against hours actually logged. Expect the first
 run to be inconclusive rather than corrective: logged time is what people

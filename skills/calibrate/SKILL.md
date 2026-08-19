@@ -5,18 +5,26 @@ description: Compare past effort estimates against hours actually logged in Redm
 
 # Calibrate
 
-`/estimate` learns from past **estimates**, so it reproduces how someone
-estimates — including any systematic error. This skill is the only thing that
-can tell you whether those estimates were any good.
+`/estimate` prices against the anchor table in
+`skills/estimate/references/rubric.md`, which was derived from past
+**estimates** — so it reproduces how those were made, including any systematic
+error. This skill is the only thing that can tell you whether they were any
+good. Now that the rubric is shared, a correction here moves every estimate the
+team produces, which raises the bar for making one.
 
 ```sh
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/calibrate/scripts/actuals.py" <path>...
 ```
 
-Accepts a samples file holding many estimates, individual `estimate-<id>.md`
-files, or a directory of them. It parses each estimate's issue reference and
-`Total` line, pulls matching time entries via `rmine time list`, and reports a
-ratio per ticket plus aggregates.
+Point it at the product repo's committed `estimates/` directory — that's the
+corpus `/estimate` builds up, one file per ticket. It also accepts individual
+`estimate-<id>.md` files, or any single file holding many estimates. It parses
+each estimate's issue reference and `Total` line, pulls matching time entries
+via `rmine time list`, and reports a ratio per ticket plus aggregates.
+
+**If the directory is thin, stop there.** The bar below needs 20+ tickets, and
+a corpus that small means the answer is "not yet" regardless of what the ratios
+say. That is a finding worth reporting, not a failure.
 
 The script does the arithmetic. **Interpreting it is the hard part, and doing it
 wrong is worse than not running it** — a confidently wrong multiplier applied
@@ -72,16 +80,20 @@ supports the change you were going to make.
 Only then is there a signal. Even then, prefer the specific fix to the global
 one, in this order:
 
-1. **Annotate the samples.** Add the actual to each entry in
-   `samples.local.md`: `Total (12 hrs ~ 3 points) — actual: 25 hrs`. The
-   estimator anchors on the closest comparable sample, so this corrects
-   calibration where it's wrong without touching a single anchor. Cheapest and
-   most precise change available.
-2. **Adjust individual anchors** whose work type shows consistent drift across
-   several tickets.
+1. **Adjust the individual anchor rows** whose work type shows consistent
+   drift across several tickets. Name the tickets in the PR description — an
+   anchor change without the evidence attached can't be reviewed or reverted
+   with confidence later.
+2. **Add a missing anchor row** when the drift concentrates on work the table
+   doesn't cover. Estimates for work with no matching row are flagged in their
+   `Assumptions:` block as the estimator's judgment rather than the team's
+   calibration; if those cluster, the fix is a new row, not a changed one.
 3. **Never apply a blanket multiplier to the total.** Effort doesn't drift
    uniformly, and a single number destroys the information about where the miss
    actually is.
+
+The rubric is shared policy. Changes go through a PR so the team sees the
+number move and can argue with the evidence.
 
 If the data doesn't clear the bar, the honest output is: *the logged-time data
 is too sparse or too noisy to calibrate against, and here is what would have to
