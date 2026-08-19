@@ -85,6 +85,20 @@ Run `/estimate <issue>` **from inside the repo the work will land in** — the
 estimator greps for the real services and tables a change touches before pricing
 anything, which is most of the difference between an estimate and a guess.
 
+Every estimate carries who produced it, when, and a `Confidence` grade with the
+reason next to it — graded on how much of the number came from the rubric's
+anchor table rather than from judgment, so a point estimate can't be read as
+more certain than the spec it came from.
+
+The format is a contract, not a convention: `scripts/check_format.py` checks
+arithmetic, the points formula, the required headers and the last-line rule,
+and `/estimate` runs it before it reports done. You can run it yourself over
+the whole corpus:
+
+```sh
+python3 skills/estimate/scripts/check_format.py estimates/
+```
+
 Estimates are written to `./estimates/estimate-<id>.md` in that repo. **Commit
 them.** That directory is the team's estimate corpus and the only input
 `/calibrate` has:

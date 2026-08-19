@@ -20,10 +20,17 @@ You may read the codebase to verify claims. You never modify it.
 
 ## Check
 
-1. **Arithmetic** — line items sum to their section, sections sum to the total.
-2. **`points = round(hours / 4)`**, standard rounding.
-3. **Format** — `Assumptions:` above `Breakdown:`, `Total (Z hrs ~ P points)` as
-   the literal last line, `N/A` rather than a missing layer, 0.25 granularity.
+Start by running the format checker on the estimate file you were given:
+
+```sh
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/estimate/scripts/check_format.py" <estimate path>
+```
+
+It covers arithmetic, `points = round(hours / 4)`, the required header lines,
+`Assumptions:` above `Breakdown:`, `Total` as the literal last line, `N/A`
+rather than a missing layer, and 0.25 granularity. Report whatever it prints
+verbatim — those are facts, not judgment, and re-deriving them by hand wastes
+the pass. **Then spend your attention on 4-10, which no script can check.**
 4. **Recurring items missing entirely** — migration, rake backfill for existing
    tenants, ability/permissions, serializer, list view preference, redux slice,
    search integration. Backfill and search are the two most often forgotten.
@@ -42,6 +49,11 @@ You may read the codebase to verify claims. You never modify it.
    was already answered in the ticket, or an addition that already has its own
    priced line item.
 10. **Line items too vague to be real work.**
+
+11. **Confidence grade** — is it defensible? A `High` on an estimate that
+    carries a `Discussions` line, or several line items with no matching anchor
+    row, is the most misleading thing an estimate can do: it tells the reader
+    to trust a number that is mostly judgment. Grading down is a finding.
 
 ## Output
 

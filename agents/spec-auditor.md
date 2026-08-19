@@ -54,5 +54,17 @@ block.
 4. `WORTH ASKING` — any gap the requester could close in one sentence, that
    materially moves the hours, and that code can't settle. The archetype:
    *is there an existing service or pattern this reuses, or is it built from
-   scratch?* That one swings a line item 3x. At most three, phrased as
-   questions.
+   scratch?* That one swings a line item 3x. At most three.
+
+   **Every question carries your recommended answer.** Format each as:
+
+   ```
+   Q: <the question>
+   A: <what you'd assume if nobody answers, and why in one clause>
+   ```
+
+   A bare question asks someone to do your thinking. A question with a
+   recommendation attached asks them to correct you if you're wrong, which is
+   a far cheaper thing to answer and much likelier to get a reply. If you
+   can't propose an answer, you don't understand the gap well enough to make
+   it one of your three — put it in `NON-BLOCKING GAPS` instead.
