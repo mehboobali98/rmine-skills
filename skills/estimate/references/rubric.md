@@ -16,32 +16,46 @@ for the bar a calibration result has to clear.
 
 ## Output format
 
+The breakdown is a **numbered outline** — one level per degree of nesting,
+the way it comes out of a Google Doc:
+
 ```
-Task: <task name>
-Redmine: <issue URL>
-Estimated by: <name>
-Date: <YYYY-MM-DD>
-Confidence: <High|Medium|Low> — <the one thing driving it>
-Assumptions:
-  <what the number depends on — whether AI assistance was applied, linked
-   tickets treated as shipped, non-blocking gaps priced into Discussions,
-   least-confident areas>
-Breakdown:
-Backend (X hrs)
-  <line item> (N hr)
-    <sub-detail, no hours of its own>
-Frontend (Y hrs)
-  <line item> (N hr)
-Testing (T hrs)
-Demo + PR Reviews (D hrs)
-Discussions + Additional cases: B hours        ← only when the spec is fuzzy
-Total (Z hrs ~ P points)
+**Task**: <task name>
+**Redmine**: <issue URL>
+**Estimated by**: <name>
+**Date**: <YYYY-MM-DD>
+**Confidence**: <High|Medium|Low> — <the one thing driving it>
+**Assumptions**:
+    <what the number depends on — whether AI assistance was applied, linked
+     tickets treated as shipped, non-blocking gaps priced into Discussions,
+     least-confident areas>
+**Breakdown**:
+    1. Backend (X hrs)
+        a. <line item> (N hr)
+            i. <sub-detail, no hours of its own>
+        b. <line item, unpriced — describes what the section covers>
+    2. Frontend (Y hrs)
+        a. <line item> (N hr)
+    3. Testing (T hrs)
+    4. Demo + PR Reviews (D hrs)
+    5. Discussions + Additional cases: B hours     ← only when the spec is fuzzy
+        a. <the gap these hours buy>
+    6. Total (Z hrs ~ P points)
 ```
 
 Rules that hold on every estimate:
 
-- **`Total (Z hrs ~ P points)` is the literal last line.** Downstream tooling
-  parses it. Don't reword it, don't add a summary after it.
+- **`Total (Z hrs ~ P points)` is the literal last line**, outline number and
+  all. Downstream tooling parses it. Don't reword it, don't add a summary after
+  it.
+- **Nesting is what carries meaning**, not the marker style. `1. / a. / i. / 1.`
+  is what a Google Doc produces and what the corpus mostly holds, but a plain
+  two-space indent with no markers reads identically to the tooling. Bold on the
+  header keys is likewise optional. What matters is that each level sits deeper
+  than the one above it — flatten an estimate and its structure is gone.
+- **A line item without hours is descriptive**, naming what the section covers
+  rather than claiming a slice of it. Its priced siblings still have to add up
+  to the section, so nothing hides behind one.
 - **`points = round(hours / 4)`**, standard rounding. 26.5→7, 10.5→3, 6.75→2,
   65→16, 29.5→7. Below ~4 hrs the points figure is often dropped entirely.
 - **Granularity is 0.25 hr.** In practice the values used are 0.25, 0.5, 1, 2,
@@ -51,7 +65,8 @@ Rules that hold on every estimate:
 - **A layer that isn't touched gets `N/A`, not omission.** `Frontend (N/A)`
   says "considered, nothing needed"; a missing heading says "forgot".
 - Sub-details sit under a priced line item without prices of their own — they
-  justify the number, they don't subdivide it.
+  justify the number, they don't subdivide it. Nest them as deep as the work
+  needs; the checker only cares that they are deeper than the item they explain.
 - **The header lines are all required.** `check_format.py` enforces every rule
   in this section, so an estimate that drifts fails loudly instead of silently
   dropping out of the calibration corpus.

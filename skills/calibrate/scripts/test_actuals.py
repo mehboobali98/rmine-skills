@@ -111,6 +111,13 @@ def test_parses_total_line_shapes():
         ("Total 16 actions", None),
         ("Total 17 relationships", None),
         ("Backend (2 hrs)", None),
+        # Google Docs numbers every outline level, Total included. Unstripped,
+        # the marker matched nothing and the whole estimate left the corpus.
+        ("    6. Total (16 hrs ~ 4 points)", 16.0),
+        ("6) Total: 4.25 hrs", 4.25),
+        ("- Total ~ 11 hrs", 11.0),
+        ("a. Total 16 actions", None),
+        ("2. Backend (4 hrs)", None),
     ]
     for line, want in cases:
         check(f"parse_total({line!r})", actuals.parse_total(line), want)
@@ -131,6 +138,75 @@ def test_parses_estimates_from_a_file():
     finally:
         os.unlink(path)
     check("two estimates parsed", found, {"54039": 16.0, "54040": 8.0})
+
+
+# estimate/SKILL.md tells estimators to name the linked tickets they treated as
+# shipped foundations or dependencies in `Assumptions:`, and the natural way to
+# write one is a link. Before the `Redmine:` header took precedence, that link
+# stole the Total: the estimated ticket vanished from the corpus as "no time
+# logged", and the linked ticket was scored against an estimate never made for
+# it — a fabricated ratio landing straight in the weighted aggregate.
+def test_linked_ticket_never_steals_the_total():
+    content = (
+        "Task: Widget audit trail\n"
+        "Redmine: https://redmine.example.com/issues/12346\n"
+        "Assumptions:\n"
+        "  History tab is https://redmine.example.com/issues/12350, priced there.\n"
+        "Breakdown:\n"
+        "Backend (5 hrs)\n"
+        "Total (5 hrs ~ 1 points)\n"
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+        f.write(content)
+        path = f.name
+    try:
+        found = dict(actuals.parse_estimates(path))
+    finally:
+        os.unlink(path)
+    check("header wins over a linked URL", found, {"12346": 5.0})
+
+
+# Estimates predating the header carry a bare URL and nothing else. They still
+# have to parse, or the older half of the corpus disappears.
+def test_bare_url_still_claims_its_total():
+    content = (
+        "https://redmine.example.com/issues/54039\n"
+        "Total (16 hrs ~ 4 points)\n"
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+        f.write(content)
+        path = f.name
+    try:
+        found = dict(actuals.parse_estimates(path))
+    finally:
+        os.unlink(path)
+    check("bare url parsed", found, {"54039": 16.0})
+
+
+# The shape the corpus is actually written in: a numbered outline out of a
+# Google Doc, bold header keys, Total numbered as the last item.
+def test_parses_a_numbered_outline_estimate():
+    content = (
+        "**Task**: IT Asset Accuracy enablement\n"
+        "**Redmine**: https://redmine.example.com/issues/54039\n"
+        "**Breakdown**:\n"
+        "    1. Backend (4 hrs)\n"
+        "        a. New KPIs handling in:\n"
+        "            i. FixedAssetKpiLinksGenerator\n"
+        "    2. Frontend (7 hrs)\n"
+        "    3. Demo + PR Reviews (2 hr)\n"
+        "    4. Testing (1 hr)\n"
+        "    5. Discussions + Additional cases: 2 hours\n"
+        "    6. Total (16 hrs ~ 4 points)\n"
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+        f.write(content)
+        path = f.name
+    try:
+        found = dict(actuals.parse_estimates(path))
+    finally:
+        os.unlink(path)
+    check("numbered outline parsed", found, {"54039": 16.0})
 
 
 def main():

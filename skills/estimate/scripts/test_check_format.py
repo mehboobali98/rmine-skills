@@ -46,7 +46,7 @@ CASES = [
     ("total wrong",
      lambda s: s.replace("Total (8 hrs", "Total (9 hrs"), "sections sum to"),
     ("trailing commentary",
-     lambda s: s + "\nHappy to break this down further.\n", "last line must be"),
+     lambda s: s + "\nHappy to break this down further.\n", "nothing may follow the Total line"),
     ("assumptions below breakdown",
      lambda s: s.replace("Assumptions:\n  AI-assisted development.\n", "")
                 .replace("Breakdown:", "Breakdown:\nAssumptions:"), "must sit above"),
@@ -72,14 +72,76 @@ CASES = [
      lambda s: s.replace("Frontend (N/A)\n", ""), "no Frontend section"),
     ("N/A section with line items",
      lambda s: s.replace("Frontend (N/A)", "Frontend (N/A)\n  Something (1 hr)"), "N/A but has line items"),
+
+    # A file holding several estimates used to be checked only as far as the
+    # last one — everything above it passed unread, and the file still printed
+    # `ok`. references/format-examples.md is exactly that shape.
+    ("second estimate in a multi-estimate file",
+     lambda s: s + "\n" + s.replace("Total (8 hrs ~ 2 points)", "Total (9 hrs ~ 2 points)"),
+     "sections sum to"),
+    ("first estimate in a multi-estimate file",
+     lambda s: s.replace("Backend (2.5 hrs)", "Backend (4 hrs)") + "\n" + s,
+     "line items sum to"),
+    ("two clean estimates in one file", lambda s: s + "\n" + s, None),
+]
+
+# The corpus is written in Google Docs, which numbers every outline level and
+# keeps the numbering in the exported text. An estimate in that shape used to
+# parse as nothing at all: the Total was `6. Total (...)`, which matched no
+# pattern, so the file failed the format contract and — worse — disappeared
+# from /calibrate entirely.
+NUMBERED = """\
+**Task**: Allow exporting widgets from the listing screen
+**Redmine**: https://redmine.example.com/issues/12345
+**Estimated by**: A. Engineer
+**Date**: 2026-03-04
+**Confidence**: High — every line item priced from a matching anchor row
+**Assumptions**:
+    AI-assisted development.
+**Breakdown**:
+    1. Backend (2.5 hrs)
+        a. Export service following the existing CSV exporter pattern (2 hr)
+            i. Column selection from the list view preference
+                1. Falls back to every visible column
+        b. Controller action, route, ability (0.5 hr)
+        c. Follows the existing exporter pattern throughout
+    2. Frontend (N/A)
+    3. Testing (0.5 hr)
+    4. Demo + PR Reviews (2 hrs)
+    5. Discussions + Additional cases: 3 hours
+        a. Retention policy was never specified
+    6. Total (8 hrs ~ 2 points)
+"""
+
+NUMBERED_CASES = [
+    ("numbered outline, clean", lambda s: s, None),
+    ("numbered total still parsed",
+     lambda s: s.replace("6. Total (8 hrs", "6. Total (9 hrs"), "sections sum to"),
+    ("numbered section arithmetic",
+     lambda s: s.replace("1. Backend (2.5 hrs)", "1. Backend (3 hrs)"), "line items sum to"),
+    ("numbered sub-detail may not carry hours",
+     lambda s: s.replace("i. Column selection from the list view preference",
+                         "i. Column selection from the list view preference (1 hr)"),
+     "sub-details justify"),
+    ("bold headers are read",
+     lambda s: s.replace("**Date**: 2026-03-04\n", ""), "missing `Date:`"),
+    # 1.c carries no hours on purpose: descriptive, not a slice of the total.
+    ("descriptive line item is allowed",
+     lambda s: s.replace("        c. Follows the existing exporter pattern throughout\n", ""), None),
+    # Flattening is the one thing that genuinely destroys the estimate.
+    ("flattened outline is caught",
+     lambda s: "\n".join(l.lstrip() for l in s.splitlines()) + "\n", "neither a section heading"),
 ]
 
 
 def run():
     failures = []
-    for name, mutate, expected in CASES:
+    for name, mutate, expected, sample in (
+        [(n, m, e, GOOD) for n, m, e in CASES]
+        + [(n, m, e, NUMBERED) for n, m, e in NUMBERED_CASES]
+    ):
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
-            f.write(mutate(GOOD))
+            f.write(mutate(sample))
             path = f.name
         try:
             problems = check(path)
@@ -94,7 +156,8 @@ def run():
 
     for failure in failures:
         print("FAIL " + failure)
-    print(f"\n{len(CASES) - len(failures)}/{len(CASES)} passed")
+    total = len(CASES) + len(NUMBERED_CASES)
+    print(f"\n{total - len(failures)}/{total} passed")
     return 1 if failures else 0
 
 

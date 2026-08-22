@@ -66,6 +66,11 @@ Only the estimate, in the exact format from the rubric. In particular:
   table**, not on how you feel about it — see the rubric — and always names the
   one thing driving the grade
 - `Assumptions:` goes **above** `Breakdown:`
+- the breakdown is a **numbered outline** — `1.` sections, `a.` line items,
+  `i.` and deeper for sub-details. Nesting is what says which sub-detail
+  justifies which priced item, so never flatten it
+- a line item with no hours is descriptive — it names what the section covers.
+  Use one where the work is real but isn't a separate slice of the total
 - `Total (Z hrs ~ P points)` is the **literal last line** — a later
   estimate-vs-actual pass parses it, so nothing follows it
 - section hours equal the sum of their line items; the total equals the sum of
