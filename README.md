@@ -119,6 +119,12 @@ does — one comment, on a ticket you name, and only after showing you the exact
 text and getting a yes. It touches nothing else: no status, no fields, no
 assignee.
 
+## What's next
+
+`ROADMAP.md` lists the planned skills and tooling work, with the reasoning for
+each — most of them exist because something here already promises a capability
+it doesn't yet have.
+
 ## License
 
 MIT
