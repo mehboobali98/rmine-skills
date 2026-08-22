@@ -4,6 +4,72 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.4.0
+
+**The house format is a numbered outline, and the tooling now reads one.** This
+is a format change, so it moves what every estimate must look like.
+
+### Fixed
+
+- **An estimate written in the real house format was invisible to
+  `/calibrate`.** Estimates are written in Google Docs, which numbers every
+  outline level and keeps the numbering in the exported text — so the last line
+  arrives as `6. Total (16 hrs ~ 4 points)`. `parse_total` matched on `^Total`
+  and saw nothing, `parse_estimates` returned an empty list, and the ticket
+  simply never entered the corpus. No error, no row, no `no time logged` line:
+  the estimate did not exist as far as the analysis was concerned. Both scripts
+  now strip an outline marker before matching, and tolerate the `**bold**` the
+  header keys carry out of a rich-text doc.
+- **`check_format.py` rejected the same estimates**, for the same reason plus
+  hard-coded indent widths of 0 and 2 — a Google Docs outline indents by
+  whatever Word decided. Nesting is now ranked from the distinct indent widths
+  in the file, so a four-level outline and a hand-written two-space indent read
+  identically, and `Total` stays level 0 whether or not the outline numbered it.
+- **`/calibrate` credited an estimate's hours to a linked ticket instead of the
+  one being estimated.** `actuals.py` bound each `Total` to the last
+  `/issues/<id>` URL it had seen, wherever it appeared — and `/estimate` tells
+  estimators to name the linked tickets they treated as shipped foundations or
+  dependencies in `Assumptions:`, where the natural way to write one is a link.
+  When that happened the estimated ticket reported `no time logged` and dropped
+  out of the corpus, while the linked ticket was scored against an estimate
+  never made for it, putting a fabricated ratio straight into the weighted
+  aggregate. The `Redmine:` header now claims the `Total` and nothing can take
+  it; a bare URL still works for estimates written before that header existed.
+- **`check_format.py` printed `ok` for files it had only partly read.** In a
+  file holding several estimates it validated the last one and skipped the
+  rest, which is the worst possible failure for a checker whose job is stopping
+  estimates from silently dropping out of the corpus. It now splits on the
+  `Total` line and checks every estimate, reporting problems against the real
+  line numbers. Content after the final `Total` is named as trailing content
+  rather than reported as a malformed estimate.
+- **`estimate-validator`'s checklist started at item 4** and told the agent to
+  work through "4-10" while item 11 sat below it — items 1-3 had been replaced
+  by `check_format.py` in 0.3.0 without renumbering. Renumbered 1-8, with the
+  confidence check inside the range the agent is pointed at.
+
+### Changed
+
+- **A line item without hours is legal, and descriptive.** Real estimates use
+  them constantly — `New KPIs handling in:` names what a section covers without
+  claiming a slice of it — and the checker used to fail every one as "line item
+  carries no hours". Priced siblings still have to sum to the section, so this
+  hides nothing.
+- **`rubric.md` documents the outline** as the output format, states that
+  nesting rather than marker style is what carries meaning, and says plainly
+  that flattening an estimate destroys it. Marker style and bold header keys
+  are both optional; depth is not.
+- **`format-examples.md` is rewritten as two numbered outlines**, and no longer
+  contradicts the rubric it illustrates. Unpriced descriptive line items are a
+  fourth reading added to what the entries teach. The first entry totals 8.5
+  hrs, so Testing now collapses into `Demo + PR Reviews + Testing` as
+  `rubric.md` requires under ~10 hrs; the second grew the ability line item it
+  was missing from the backend checklist, which puts it over that threshold and
+  brings Testing to 14% of dev hours rather than 20%. A note says why the two
+  entries differ, since the file is the canonical shape reference and was
+  teaching the exception as the norm.
+- **`effort-estimator`** is told to emit the outline and when to use an unpriced
+  line item.
+
 ## 0.3.1
 
 ### Fixed

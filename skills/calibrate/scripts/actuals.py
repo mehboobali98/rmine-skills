@@ -25,6 +25,25 @@ from statistics import median
 NON_WORK_ACTIVITIES = {"leave", "holiday", "vacation", "sick", "public holiday"}
 
 ISSUE_RE = re.compile(r"/issues/(\d+)")
+# The `Redmine:` header names the ticket being estimated. Any other issue URL
+# in the file is a reference, not the subject — `Assumptions:` routinely links
+# the tickets treated as shipped foundations or dependencies, exactly as
+# estimate/SKILL.md asks for. Those must never claim the Total. The `**` allows
+# for the bold the header carries when the estimate came out of a rich-text doc.
+REDMINE_HEADER_RE = re.compile(r"^\**\s*Redmine\s*\**\s*:\s*\S*/issues/(\d+)", re.I)
+
+# Estimates are written as multi-level outlines and the numbering survives the
+# export, so the Total arrives as "6. Total (16 hrs ~ 4 points)". Stripping the
+# marker is what keeps a numbered estimate inside the corpus — unstripped, it
+# parses as nothing and the ticket silently never existed.
+MARKER_RE = re.compile(
+    r"^(?:\d+|[a-zA-Z]|[ivxlcdm]{2,6}|[IVXLCDM]{2,6})[.)]\s+|^[-*\u2022]\s+"
+)
+
+
+def content(line):
+    """A line's text with indentation and any outline marker removed."""
+    return MARKER_RE.sub("", line.strip(), count=1)
 
 # Total lines are hand-written and inconsistent. Observed shapes:
 #   Total (16 hrs ~ 4 points)      Total: 4.25 hrs        Total ~ 11 hrs
@@ -43,7 +62,7 @@ TOTAL_PATTERNS = [
 
 def parse_total(line):
     """Return the estimated hours on a Total line, or None."""
-    body = line.strip()
+    body = content(line)
     if not re.match(r"^Total\b", body, re.I):
         return None
     # A bare noun after the number means it's counting something else.
@@ -61,20 +80,34 @@ def parse_total(line):
 def parse_estimates(path):
     """Yield (issue_id, estimated_hours) for every estimate found in a file.
 
-    Works for a single estimate file and for one file holding many:
-    an issue URL claims every Total line until the next issue URL appears.
+    Works for a single estimate file and for one file holding many.
+
+    A `Redmine:` header claims the Total that follows it, and nothing else can
+    take it away. Older estimates that carry a bare issue URL instead still
+    work — a bare URL claims the Total only while no header has been seen for
+    the current estimate. Without that precedence a linked ticket named in
+    `Assumptions:` silently steals the hours: the estimated ticket then reports
+    `no time logged` and drops out of the corpus, while the linked one is
+    compared against an estimate that was never for it.
     """
     current = None
+    from_header = False
     with open(path) as f:
         for line in f:
+            header = REDMINE_HEADER_RE.match(content(line))
+            if header:
+                current, from_header = header.group(1), True
+                continue
             found = ISSUE_RE.search(line)
             if found:
-                current = found.group(1)
+                if not from_header:
+                    current = found.group(1)
                 continue
             hours = parse_total(line)
             if hours is not None and current:
                 yield current, hours
-                current = None  # one total per issue; ignore stray later ones
+                # One total per issue; the next estimate re-establishes both.
+                current, from_header = None, False
 
 
 def logged_hours(issue_id, profile=None):
@@ -123,7 +156,11 @@ def issue_status(issue_id, profile=None):
 
 
 def collect(paths):
-    """Gather (issue_id, hours) from files and directories, newest wins."""
+    """Gather (issue_id, hours) from files and directories.
+
+    A ticket estimated in more than one file keeps the last one read, in the
+    sorted order below — which is filename order, not date order.
+    """
     files = []
     for p in paths:
         if os.path.isdir(p):

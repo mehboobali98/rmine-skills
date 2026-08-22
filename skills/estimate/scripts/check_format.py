@@ -32,6 +32,39 @@ TOTAL_RE = re.compile(
 )
 
 
+# Estimates are written as multi-level outlines — Google Docs numbers every
+# level (1. / a. / i. / 1.) and the marker survives into the exported text.
+# Nesting is what says which sub-details roll up into which priced line item,
+# so the marker has to be stripped before anything else is matched, never
+# mistaken for content.
+MARKER_RE = re.compile(
+    r"^(?:\d+|[a-zA-Z]|[ivxlcdm]{2,6}|[IVXLCDM]{2,6})[.)]\s+|^[-*\u2022]\s+"
+)
+# Header keys survive a round trip through a rich-text doc as `**Task**:`.
+EMPHASIS = "*_ "
+
+
+def content(line):
+    """A line's text with indentation and any outline marker removed."""
+    return MARKER_RE.sub("", line.strip(), count=1)
+
+
+def levels_of(lines, start):
+    """Map indent width -> nesting level, for the lines below `start`.
+
+    Levels are ranked rather than measured. A hand-written estimate indents by
+    two spaces; a Google Docs outline indents by whatever Word decided. Ranking
+    the distinct widths reads both without caring which, and keeps `Total` at
+    level 0 whether or not the outline numbered it.
+    """
+    widths = sorted({
+        len(line) - len(line.lstrip())
+        for i, line in enumerate(lines)
+        if i > start and line.strip()
+    })
+    return {width: level for level, width in enumerate(widths)}
+
+
 def hours_of(value):
     """Pull the number out of '4 hrs' / '0.5 hr'. None for N/A."""
     if value.strip().upper() == "N/A":
@@ -50,21 +83,71 @@ def off_grid(hours):
 
 
 def check(path):
-    """Return a list of problem strings for one estimate file."""
-    problems = []
+    """Return a list of problem strings for an estimate file.
+
+    `/estimate` writes one estimate per file, but the corpus also holds files
+    carrying several — `references/format-examples.md` is one, and
+    calibrate/actuals.py reads them. Checking only the last estimate in such a
+    file and printing `ok` would be the worst of both: a clean bill of health
+    for content nothing looked at.
+    """
     with open(path) as f:
         lines = [line.rstrip("\n") for line in f]
 
+    if not any(line.strip() for line in lines):
+        return [f"{path}: empty file"]
+
+    blocks, trailing = split_estimates(lines)
+    problems = []
+    for offset, block in blocks:
+        problems += check_estimate(path, offset, block)
+    if trailing is not None:
+        offset, first = trailing
+        problems.append(
+            f"{path}:{offset + 1}: nothing may follow the Total line — "
+            f"downstream tooling parses it as last, got: {first!r}"
+        )
+    return problems
+
+
+def split_estimates(lines):
+    """Split a file into estimate blocks, plus whatever trails the last one.
+
+    `Total (...)` ends an estimate — it is the format's literal last line — so
+    every Total starts a new block after it. Returns (blocks, trailing), where
+    blocks is a list of (offset, lines) and trailing is (offset, first_line)
+    for content after the final Total, or None. A file with one estimate and
+    nothing after it yields one block and behaves exactly as before.
+    """
+    blocks, start = [], 0
+    for i, line in enumerate(lines):
+        if TOTAL_RE.match(content(line)):
+            blocks.append((start, lines[start:i + 1]))
+            start = i + 1
+
+    rest = [(i, line) for i, line in enumerate(lines[start:], start) if line.strip()]
+    if not blocks:
+        # No Total anywhere: one malformed estimate, not trailing content.
+        return [(0, lines)], None
+    if rest:
+        return blocks, (rest[0][0], rest[0][1].strip())
+    return blocks, None
+
+
+def check_estimate(path, offset, lines):
+    """Return a list of problem strings for one estimate."""
+    problems = []
+
     def flag(i, msg):
-        problems.append(f"{path}:{i + 1}: {msg}")
+        problems.append(f"{path}:{offset + i + 1}: {msg}")
 
     body = [(i, line) for i, line in enumerate(lines) if line.strip()]
     if not body:
-        return [f"{path}: empty file"]
+        return []
 
     # --- the parsed contract: Total is the literal last line -----------------
     last_i, last_line = body[-1]
-    total_match = TOTAL_RE.match(last_line)
+    total_match = TOTAL_RE.match(content(last_line))
     if not total_match:
         flag(last_i, f"last line must be `Total (Z hrs ~ P points)`, got: {last_line!r}")
         return problems  # nothing below depends on a total we couldn't read
@@ -85,30 +168,36 @@ def check(path):
     # read as more certain than the spec it came from.
     header = {}
     for i, line in enumerate(lines):
-        key, sep, _ = line.partition(":")
-        if sep and not line.startswith(" "):
-            header.setdefault(key.strip(), i)
+        if line.startswith(" "):
+            continue
+        key, sep, _ = content(line).partition(":")
+        if sep:
+            header.setdefault(key.strip(EMPHASIS), i)
 
     for required in ("Task", "Redmine", "Estimated by", "Date", "Confidence"):
         if required not in header:
-            problems.append(f"{path}: missing `{required}:` header line")
+            problems.append(f"{path}:{offset + 1}: missing `{required}:` header line")
 
     if "Date" in header:
         i = header["Date"]
-        if not DATE_RE.match(lines[i]):
+        if not DATE_RE.match(content(lines[i]).replace("**", "")):
             flag(i, "Date must be ISO `YYYY-MM-DD`")
     if "Confidence" in header:
         i = header["Confidence"]
-        confidence = CONFIDENCE_RE.match(lines[i])
+        confidence = CONFIDENCE_RE.match(content(lines[i]).replace("**", ""))
         if not confidence:
             flag(i, "Confidence must be High, Medium or Low")
         elif not confidence.group("why").strip(" -\u2014"):
             flag(i, "Confidence needs a reason after it — a bare grade says nothing")
 
     # --- Assumptions above Breakdown, so the total stays last ----------------
-    heads = {line.strip(): i for i, line in enumerate(lines) if line.strip() in ("Assumptions:", "Breakdown:")}
+    heads = {}
+    for i, line in enumerate(lines):
+        head = content(line).replace("*", "").replace("_", "").strip()
+        if head in ("Assumptions:", "Breakdown:"):
+            heads.setdefault(head, i)
     if "Breakdown:" not in heads:
-        problems.append(f"{path}: no `Breakdown:` line")
+        problems.append(f"{path}:{offset + 1}: no `Breakdown:` line")
         return problems
     if "Assumptions:" not in heads:
         flag(heads["Breakdown:"], "no `Assumptions:` block — it is required, above `Breakdown:`")
@@ -122,53 +211,60 @@ def check(path):
     in_discussion = False
     seen_total = False
 
+    level_of = levels_of(lines, heads["Breakdown:"])
+
     for i, line in enumerate(lines):
         if i <= heads["Breakdown:"] or not line.strip():
             continue
-        if TOTAL_RE.match(line):
+        text = content(line)
+        if TOTAL_RE.match(text):
             seen_total = True
             continue
         if seen_total:
             flag(i, "nothing may follow the Total line — downstream tooling parses it as last")
             continue
 
-        indent = len(line) - len(line.lstrip())
+        level = level_of[len(line) - len(line.lstrip())]
 
-        if indent == 0:
-            discussion = DISCUSSION_RE.match(line)
+        if level == 0:
+            discussion = DISCUSSION_RE.match(text)
             if discussion:
                 sections.append((i, "Discussions + Additional cases", float(discussion.group("hours"))))
                 items.append([])
                 in_discussion = True
                 continue
-            section = SECTION_RE.match(line)
+            section = SECTION_RE.match(text)
             if section:
                 sections.append((i, section.group("name"), hours_of(section.group("value"))))
                 items.append([])
                 in_discussion = False
                 continue
-            flag(i, f"unindented line is neither a section heading nor the Total: {line.strip()!r}")
-        elif indent == 2 and in_discussion:
+            flag(i, f"top-level line is neither a section heading nor the Total: {text!r}")
+        elif level == 1 and in_discussion:
             # "Name the gaps, or drop the line" — these are gap names, and
             # hours here would mean the buffer was subdivided into line items.
-            if PRICED_RE.search(line):
+            if PRICED_RE.search(text):
                 flag(i, "a named gap under Discussions carries no hours of its own")
             else:
                 gaps.append(i)
-        elif indent == 2:
-            priced = PRICED_RE.search(line)
+        elif level == 1:
+            # An unpriced line item is descriptive — it names what the section
+            # covers without claiming a slice of it. Real estimates use these
+            # freely, and the section total still has to account for whatever
+            # its siblings *are* priced at, so nothing hides here.
+            priced = PRICED_RE.search(text)
             if not priced:
-                flag(i, f"line item carries no hours: {line.strip()!r}")
-            elif not sections:
+                continue
+            if not sections:
                 flag(i, "line item appears before any section heading")
             else:
                 items[-1].append((i, float(priced.group("hours"))))
         else:
-            if PRICED_RE.search(line):
+            if PRICED_RE.search(text):
                 flag(i, "sub-details justify a line item's hours, they don't carry their own")
 
     if not sections:
-        problems.append(f"{path}: no sections found under `Breakdown:`")
+        problems.append(f"{path}:{offset + 1}: no sections found under `Breakdown:`")
         return problems
 
     # --- arithmetic ----------------------------------------------------------
@@ -201,7 +297,7 @@ def check(path):
     named = " ".join(name for _, name, _ in sections).lower()
     for layer in ("backend", "frontend"):
         if layer not in named.replace("-", ""):
-            problems.append(f"{path}: no {layer.title()} section — an untouched layer gets `N/A`, not omission")
+            problems.append(f"{path}:{offset + 1}: no {layer.title()} section — an untouched layer gets `N/A`, not omission")
 
     return problems
 
