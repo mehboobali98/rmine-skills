@@ -79,7 +79,13 @@ def parse_estimates(path):
 
 def logged_hours(issue_id, profile=None):
     """Total hours logged against an issue, split into work and non-work."""
-    cmd = ["rmine", "time", "list", "--issue", issue_id, "-o", "json"]
+    # --all matters: `rmine time list` returns 25 entries by default, and a
+    # ticket that ran for weeks has more than that. Without it the hours come
+    # back truncated, the ratio reads low, and the row is flagged "suspect
+    # under-logging" — manufacturing the exact artifact SKILL.md warns is the
+    # biggest source of false optimism here. It biases the weighted ratio
+    # hardest, since the tickets with the most entries are the largest ones.
+    cmd = ["rmine", "time", "list", "--issue", issue_id, "--all", "-o", "json"]
     if profile:
         cmd += ["--profile", profile]
     proc = subprocess.run(cmd, capture_output=True, text=True)

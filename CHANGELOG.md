@@ -4,6 +4,22 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.3.1
+
+### Fixed
+
+- **`/calibrate` under-counted logged time on every ticket with more than 25
+  time entries.** `actuals.py` called `rmine time list` without `--all`, and
+  that command returns 25 entries by default — so a ticket with 30 hours across
+  30 entries reported 25. The ratio then read low and the row was flagged
+  `suspect under-logging`, manufacturing the exact artifact this skill tells
+  you is the biggest source of false optimism in the analysis. The bias was not
+  even: tickets with the most entries are the largest ones, which dominate the
+  weighted ratio. Any calibration run before this fix understated actual hours,
+  so re-run it before trusting an earlier result.
+- **`test_actuals.py`** now covers the script, including a regression guard on
+  `--all`, the non-work split, logger counting, and every `Total` line shape.
+
 ## 0.3.0
 
 ### Added
