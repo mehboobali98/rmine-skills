@@ -12,6 +12,7 @@ above: multi-step workflows that read a ticket and do something useful with it.
 |---|---|
 | `/estimate <issue>` | Turns a Redmine ticket into a frontend/backend effort breakdown in hours and points — gated on spec completeness, priced against the actual codebase, then independently reviewed. |
 | `/calibrate <paths>` | Compares past estimates against hours actually logged, to find out whether the rubric is systematically optimistic. Reports drift *and* whether the data is good enough to act on. |
+| `/spec-interview <issue>` | Audits a spec, routes each gap to whoever can actually close it — code, you, or the requester — and posts the questions that are left back to the ticket, each with the assumption that stands if nobody replies. |
 
 `/estimate` runs three subagents that ship with the plugin, each carrying its own
 instructions rather than being briefed by the caller:
@@ -113,7 +114,10 @@ recommend touching an anchor, and it is written to say "the data is too noisy
 to act on" rather than hand you a confident multiplier built from four tickets.
 An uncommitted estimate on one laptop never counts toward that.
 
-Nothing is written back to Redmine.
+`/estimate` and `/calibrate` write nothing back to Redmine. `/spec-interview`
+does — one comment, on a ticket you name, and only after showing you the exact
+text and getting a yes. It touches nothing else: no status, no fields, no
+assignee.
 
 ## License
 

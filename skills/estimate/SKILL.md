@@ -108,10 +108,11 @@ It returns `READY` or `INCOMPLETE`, plus blocking gaps, non-blocking gaps, and
 anything `WORTH ASKING`.
 
 **If `INCOMPLETE`:** print the blocking gaps, stop, don't estimate. The right
-next move is usually fixing the spec rather than estimating it anyway — if the
-user has a grilling or spec-interview skill installed, point at it. The user can
-also override by saying so, in which case each gap becomes a stated assumption,
-the `Discussions` line widens, and `Confidence` drops to `Low`.
+next move is fixing the spec rather than estimating it anyway — point at
+`/spec-interview <id>`, which ships with this plugin, runs the same auditor, and
+writes the answers back to the ticket. The user can also override by saying so,
+in which case each gap becomes a stated assumption, the `Discussions` line
+widens, and `Confidence` drops to `Low`.
 
 **If it returned `WORTH ASKING` items:** ask them with AskUserQuestion *before*
 estimating, batched, at most three. A gap a tech lead closes in one sentence is

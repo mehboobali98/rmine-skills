@@ -4,6 +4,47 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.5.0
+
+### Added
+
+- **`/spec-interview` — the skill `/estimate` has been pointing at since 0.3.0
+  without it existing.** An `INCOMPLETE` verdict told you to go fix the spec
+  "if the user has a grilling or spec-interview skill installed", which nobody
+  did, so the only actionable path left was to override the gate — dropping
+  `Confidence` to `Low` and feeding the corpus exactly the estimates it least
+  wants. The gate now has somewhere to send you.
+
+  It runs the same `spec-auditor`, then **routes each gap to whoever can
+  actually close it**: anything the codebase settles is settled by reading code,
+  anything the person at the terminal knows is asked with AskUserQuestion, and
+  only what genuinely needs the requester goes to the ticket. That routing is
+  the substance of it — an interview that forwards every question to whoever
+  typed the command is a slower way of guessing.
+
+  Questions posted to the ticket carry the assumption that stands if nobody
+  replies, so silence still produces a documented decision rather than a silent
+  one. Same reasoning as the `Q:`/`A:` pairs added in 0.3.0: a question with a
+  recommendation attached asks someone to correct you, which is far cheaper to
+  answer than a question that asks them to think.
+
+### Changed
+
+- **`/spec-interview` is the first skill in this plugin that writes to
+  Redmine, and it never does so without explicit approval.** One comment, on a
+  ticket you name, shown in full and approved as that exact text before it
+  posts — no status, no fields, no assignee. A general "interview 54039 and post
+  the questions" authorises the run, not text that did not exist when it was
+  said; a yes carries to no other ticket, no second comment, and no reworded
+  draft; and where a prompt cannot reach a person, the draft is printed and
+  nothing is posted. A Redmine comment notifies every watcher and cannot be
+  unsent, so the gate is unconditional rather than a default. `/estimate` and
+  `/calibrate` still write nothing.
+  The README said "Nothing is written back to Redmine" as a flat property of the
+  plugin; it now says which skills that holds for and what the exception does.
+- **`estimate/SKILL.md`** points at `/spec-interview <id>` by name on an
+  `INCOMPLETE` verdict, rather than at a hypothetical installed skill.
+
 ## 0.4.0
 
 **The house format is a numbered outline, and the tooling now reads one.** This
