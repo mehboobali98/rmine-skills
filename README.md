@@ -25,6 +25,9 @@ instructions rather than being briefed by the caller:
 
 None of the three can write or edit files.
 
+I wrote up why each one is restricted the way it is in
+[Three agents that don't trust each other](https://mehboob.dev/blog/three-agents-that-dont-trust-each-other).
+
 ## Install
 
 ```sh
