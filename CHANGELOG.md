@@ -4,6 +4,18 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.5.1
+
+### Fixed
+
+- **`/spec-interview` posts the comment the user approved, byte for byte.** It
+  passed the draft to `rmine issue comment` as a quoted argument, and a drafted
+  comment is multi-line Markdown with backticks, `$` and quotes in it, all of
+  which the shell rewrites first. The approval gate in §6 approves exact text,
+  so the text has to survive the trip. The draft is now written to a file,
+  shown from that file, and posted with `rmine issue comment --file`, which
+  needs rmine v0.7.0; preflight checks for it before any drafting starts.
+
 ## 0.5.0
 
 ### Added
