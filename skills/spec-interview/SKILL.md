@@ -30,6 +30,11 @@ credentials that don't authenticate. If it fails, stop and point at the fix —
 `go install github.com/mehboobali98/rmine/cmd/rmine@latest` then
 `rmine config init`.
 
+Step 6 posts with `rmine issue comment --file`, which needs rmine v0.7.0 or
+later. Check `rmine version` here, and if it is older, say so and point at the
+same `go install` — finding out after the user has approved the text means
+asking them twice.
+
 ## 1. Get the spec
 
 Accept a Redmine URL or a bare issue ID.
@@ -132,9 +137,18 @@ Rules for the comment:
 
 ## 6. Post — only after an explicit yes
 
+Write the draft to a file in the scratchpad, show the user that file's
+contents, and post the same file:
+
 ```sh
-rmine issue comment <id> "<comment text>"
+rmine issue comment <id> --file <draft-file>
 ```
+
+Never pass the comment inline. A drafted comment is multi-line Markdown full of
+backticks, `$` and quotes, and the shell rewrites those before rmine sees them,
+so what lands on the ticket is not the text that was approved. Posting the file
+that was shown is what makes the approval mean anything. If the user asks for a
+change, edit the file and show it again.
 
 **This command runs only after the user has seen the exact text and approved it,
 in this run, for this ticket.** There is no version of this where the comment
