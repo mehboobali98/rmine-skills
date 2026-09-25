@@ -37,7 +37,7 @@ I wrote up why each one is restricted the way it is in
 
 Prerequisites, all of which `/estimate` checks before it starts:
 
-1. **`rmine` on your `PATH`, with a configured profile.**
+1. **`rmine` v0.7.0 or later on your `PATH`, with a configured profile.**
 
    ```sh
    go install github.com/mehboobali98/rmine/cmd/rmine@latest
