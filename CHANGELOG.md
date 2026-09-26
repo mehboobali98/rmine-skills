@@ -4,6 +4,32 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.8.0
+
+### Added
+
+- **`/postmortem` — the per-ticket evidence `/calibrate` asks rubric PRs to
+  cite.** `/calibrate` can only report whole-ticket ratios, yet tells you to
+  fix the specific anchor row rather than apply a blanket multiplier. This
+  skill supplies the row-level view for one finished ticket.
+
+  Redmine logs time per ticket per day, so `scripts/attribute.py`
+  reconstructs the per-line split: it parses the estimate's priced lines and
+  `Anchor:` rows with `/estimate`'s own outline parser, takes the ticket
+  branch's first-parent commits, keeps those by the people who logged time and
+  made after the estimate's date (on the first real ticket that dropped 21
+  unrelated commits the merge-base let through), matches changed files to the
+  lines that name them, and splits the logged Development hours by commit
+  activity with `/log`'s exact-sum split. Renamed code is common
+  (`PcbRecordMerger` shipped as `UkRecordConsolidator`), so unmatched files go
+  to the developer, who assigns them with `--assign` and confirms the table.
+
+  Every number is marked measured or judged, anchor rows are read against
+  their range rather than the line's estimate, one ticket is never presented
+  as enough to change a row, and in-flight tickets are refused unless the
+  write-up is marked `PARTIAL`. Output goes to `postmortems/`, never
+  `estimates/`, which `/calibrate` would read as a second estimate.
+
 ## 0.7.0
 
 ### Added
