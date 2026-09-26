@@ -24,6 +24,8 @@ jobs:
             python "$t"
             echo "::endgroup::"
           done
+      - name: Format examples pass the format check
+        run: python skills/estimate/scripts/check_format.py skills/estimate/references/format-examples.md
       - name: Plugin manifests parse
         run: |
           for j in .claude-plugin/*.json; do
