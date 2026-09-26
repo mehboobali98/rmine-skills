@@ -12,6 +12,7 @@ above: multi-step workflows that read a ticket and do something useful with it.
 |---|---|
 | `/estimate <issue>` | Turns a Redmine ticket into a frontend/backend effort breakdown in hours and points — gated on spec completeness, priced against the actual codebase, then independently reviewed. |
 | `/calibrate <paths>` | Compares past estimates against hours actually logged, to find out whether the rubric is systematically optimistic. Reports drift *and* whether the data is good enough to act on. |
+| `/log [day]` | Drafts a day's Redmine time entries from git activity: which ticket branches and review worktrees you touched, and for how long relative to each other. You give the day's total, it splits the hours, and nothing is logged until you approve the table. |
 | `/spec-interview <issue>` | Audits a spec, routes each gap to whoever can actually close it — code, you, or the requester — and posts the questions that are left back to the ticket, each with the assumption that stands if nobody replies. |
 
 `/estimate` runs three subagents that ship with the plugin, each carrying its own
@@ -37,7 +38,8 @@ I wrote up why each one is restricted the way it is in
 
 Prerequisites, all of which `/estimate` checks before it starts:
 
-1. **`rmine` v0.7.0 or later on your `PATH`, with a configured profile.**
+1. **`rmine` v0.7.0 or later on your `PATH`, with a configured profile**
+   (v0.9.0 or later for `/log`, which previews with `--dry-run`).
 
    ```sh
    go install github.com/mehboobali98/rmine/cmd/rmine@latest
@@ -49,7 +51,8 @@ Prerequisites, all of which `/estimate` checks before it starts:
    most common case. Without it the skill asks you to paste the spec text
    instead of guessing from the ticket subject.
 
-3. **`python3`**, for the `.docx` spec extractor and the `/calibrate` script.
+3. **`python3`**, for the `.docx` spec extractor and the `/calibrate` and
+   `/log` scripts.
    Stdlib only; nothing to install.
 
 That's the whole setup. There is no calibration file to populate — the rubric
