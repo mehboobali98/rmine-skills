@@ -9,22 +9,6 @@ interesting it is to build.
 
 ## Skills
 
-### `/log` — the only thing that makes `/calibrate` real
-
-`skills/calibrate/SKILL.md` ends by naming its own blocker: the fix is "usually
-time-logging discipline, which is a team habit and not something this skill can
-fix." That is the one place this repo gives up on a problem that is actually
-tooling-shaped.
-
-Every unlogged hour becomes a `suspect under-logging` flag, which the same file
-calls **the single biggest source of false optimism** in the analysis. A careful
-measuring instrument starved of input measures nothing.
-
-Reads the day's git activity across repos, maps branch names and commit trailers
-to ticket IDs, drafts `rmine time log` calls, and checks `rmine time list` first
-so it can't double-log. Writes to Redmine, so it inherits the approval gate in
-`/spec-interview` §6 — and `Bash(rmine time log …)` is already an `ask` rule.
-
 ### `/sprint-plan` — a consumer `/calibrate` names but never built
 
 `skills/calibrate/SKILL.md` says the weighted ratio "is what a sprint's capacity

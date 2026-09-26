@@ -4,6 +4,28 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.6.0
+
+### Added
+
+- **`/log` — the input `/calibrate` has been missing.** `/calibrate` names
+  unlogged hours as the biggest source of false optimism in its analysis, and
+  then calls logging discipline "not something this skill can fix". It is
+  fixable: git already records which tickets were worked on and when.
+
+  `scripts/activity.py` replays each worktree's reflog to attribute every
+  commit, checkout, rebase and reset to the branch it happened on, groups the
+  day by the ticket in the branch or folder name, resolves PR review worktrees
+  to their PR's ticket with `gh`, and drops events that hit several worktrees
+  within seconds as tool activity. Git can't say how long anyone worked, so
+  the user gives the day's total and the script splits it by each ticket's
+  share of the day's sessions, in 0.5h steps that always sum to the total.
+
+  Work git never saw is asked about once, already-logged tickets are kept out
+  of the split, every entry is previewed with `rmine time log --dry-run`, and
+  nothing is logged without the same explicit approval `/spec-interview`
+  requires. Needs rmine v0.9.0.
+
 ## 0.5.1
 
 ### Fixed

@@ -97,8 +97,9 @@ number move and can argue with the evidence.
 
 If the data doesn't clear the bar, the honest output is: *the logged-time data
 is too sparse or too noisy to calibrate against, and here is what would have to
-improve* — usually time-logging discipline, which is a team habit and not
-something this skill can fix.
+improve* — usually time-logging discipline, which this skill can't fix but
+`/log` can help with: it drafts each day's entries from git, so logging stops
+depending on memory.
 
 ## Reporting
 
