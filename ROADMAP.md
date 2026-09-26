@@ -26,27 +26,23 @@ rigor; a grab-bag dilutes that.
 
 ## Tooling
 
-1. **`check_format.py` in CI.** CI runs every script's tests, but nothing
-   runs `check_format.py` against `references/format-examples.md`, so the
-   examples the skill copies can drift from the contract it checks.
-
-2. **A fixture built from a real committed estimate.** This is the gap that let
+1. **A fixture built from a real committed estimate.** This is the gap that let
    the 0.4.0 outline bug survive three releases: every test sample was written in
    a format nobody actually uses, so the suites agreed with each other and none
    of them agreed with reality. Highest-leverage item in this section.
 
-3. **Per-person drift.** `Estimated by` is captured on every estimate and
+2. **Per-person drift.** `Estimated by` is captured on every estimate and
    `rubric.md` promises `/calibrate` reads it. `actuals.py` never parses it.
 
-4. **Anchor-row attribution.** `/calibrate` says to prefer fixing the specific
+3. **Anchor-row attribution.** `/calibrate` says to prefer fixing the specific
    anchor row over a blanket multiplier, but it can only report whole-ticket
    ratios — it structurally cannot produce the recommendation it tells you to
    prefer. Needs line items to name their anchor row parseably.
 
-5. **`/calibrate --audit`.** How many corpus files fail `check_format.py`, how
+4. **`/calibrate --audit`.** How many corpus files fail `check_format.py`, how
    many tickets have no logged time. Corpus health before corpus analysis.
 
-6. **`check_format.py --strict`** for the soft rubric rules a script *can*
+5. **`check_format.py --strict`** for the soft rubric rules a script *can*
    compute: Testing at 10–15% of dev hours, the ~10 hr collapse threshold, the
    Demo defaults by task size.
 
