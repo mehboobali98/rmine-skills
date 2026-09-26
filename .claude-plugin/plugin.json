@@ -1,7 +1,7 @@
 {
   "name": "rmine-skills",
   "displayName": "rmine skills",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Workflow skills built on the rmine Redmine CLI. Turns a Redmine ticket into a reviewed frontend/backend effort estimate, and measures past estimates against hours actually logged, drafts the day's time entries from git, and checks a sprint against the team's capacity.",
   "author": {
     "name": "Mehboob Ali",

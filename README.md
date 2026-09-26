@@ -13,6 +13,7 @@ above: multi-step workflows that read a ticket and do something useful with it.
 | `/estimate <issue>` | Turns a Redmine ticket into a frontend/backend effort breakdown in hours and points — gated on spec completeness, priced against the actual codebase, then independently reviewed. |
 | `/calibrate <paths>` | Compares past estimates against hours actually logged, to find out whether the rubric is systematically optimistic. Reports drift *and* whether the data is good enough to act on. |
 | `/log [day]` | Drafts a day's Redmine time entries from git activity: which ticket branches and review worktrees you touched, and for how long relative to each other. You give the day's total, it splits the hours, and nothing is logged until you approve the table. |
+| `/postmortem <issue>` | For one finished ticket, lines its estimate up against where the time went: git proposes which lines the development hours went into, the developer confirms, and each anchor row is checked against its range. Writes `postmortems/postmortem-<id>.md`, the per-ticket evidence a rubric PR has to cite. |
 | `/sprint-plan <version>` | Sets a sprint's or monthly bucket's remaining estimated work against each assignee's capacity for the period, so an overbooked person shows up even when the team total looks fine. Lists unestimated tickets instead of guessing them, and applies `/calibrate` drift only when its bar is met. Read-only. |
 | `/spec-interview <issue>` | Audits a spec, routes each gap to whoever can actually close it — code, you, or the requester — and posts the questions that are left back to the ticket, each with the assumption that stands if nobody replies. |
 
@@ -53,7 +54,7 @@ Prerequisites, all of which `/estimate` checks before it starts:
    instead of guessing from the ticket subject.
 
 3. **`python3`**, for the `.docx` spec extractor and the `/calibrate` and
-   `/log` and `/sprint-plan` scripts.
+   `/log`, `/sprint-plan` and `/postmortem` scripts.
    Stdlib only; nothing to install.
 
 That's the whole setup. There is no calibration file to populate — the rubric
