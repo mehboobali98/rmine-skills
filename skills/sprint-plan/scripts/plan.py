@@ -87,8 +87,10 @@ def plan(project, version, capacity_days, hours_per_day, leave, file_estimates, 
 
     people = {}
     for r in rows:
-        p = people.setdefault(r["assignee"], {"name": r["assignee"], "tickets": 0, "unestimated": 0, "remaining": 0.0})
+        p = people.setdefault(r["assignee"], {"name": r["assignee"], "tickets": 0, "unestimated": 0,
+                                              "remaining": 0.0, "items": []})
         p["tickets"] += 1
+        p["items"].append({k: r.get(k) for k in ("id", "subject", "status", "estimate", "source", "spent", "remaining")})
         if r["estimate"] is None:
             p["unestimated"] += 1
         else:
@@ -102,6 +104,7 @@ def plan(project, version, capacity_days, hours_per_day, leave, file_estimates, 
         days = max(capacity_days - leave.get(p["name"], 0), 0)
         p["capacity"] = days * hours_per_day
         p["load"] = p["remaining"] / p["capacity"] if p["capacity"] else None
+        p["items"].sort(key=lambda i: -(i["remaining"] or 0))
         if p["load"] is None:
             p["verdict"] = "no capacity"
         elif p["load"] > 1:
