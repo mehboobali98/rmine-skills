@@ -9,20 +9,6 @@ interesting it is to build.
 
 ## Skills
 
-### `/sprint-plan` — a consumer `/calibrate` names but never built
-
-`skills/calibrate/SKILL.md` says the weighted ratio "is what a sprint's capacity
-planning cares about." Nothing does capacity planning.
-
-Given a set of tickets: pull their committed estimates, sum them, flag which
-tickets have **no** estimate at all, and compare against capacity. Apply the
-drift ratio only if it cleared the 20-ticket bar — and refuse to otherwise, in
-the same voice the rest of the plugin uses.
-
-**Unblocked:** rmine v0.6.0 added `--version` to `rmine issue list`, so a
-sprint's tickets come back from one filtered call —
-`rmine issue list --project <p> --version "<sprint>" --status '*' --all`.
-
 ### `/postmortem <issue>` — the evidence a rubric PR needs
 
 `/calibrate` is aggregate, and it requires that any anchor change "name the

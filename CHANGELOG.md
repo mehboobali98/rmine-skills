@@ -4,6 +4,30 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.7.0
+
+### Added
+
+- **`/sprint-plan` — the capacity planning `/calibrate` names as its
+  consumer.** Takes a Redmine target version (a sprint or a monthly bucket)
+  and sets each assignee's remaining estimated work against the hours they
+  have in the period: working days, minus holidays and each person's leave,
+  times hours per day. Per person first, because a healthy team total hides
+  overbooked people: on its first run, the September 2026 bucket's last three
+  working days sat at 74% of team capacity while 7 of the 32 people on it
+  were over 150%.
+
+  `scripts/plan.py` takes a ticket's `/estimate` Total over Redmine's
+  Estimated time, flags the two when they differ by more than 25%, and
+  subtracts time already logged using `/calibrate`'s own parser and
+  leave-excluding totals, so the two skills read the corpus the same way.
+  Tickets with no estimate make a person's load `unknown` rather than
+  guessed; overruns and unassigned work are listed.
+
+  Drift is applied only when `/calibrate`'s bar is met, only to the load that
+  came from `/estimate` files (the drift says nothing about Redmine's field),
+  and only as one adjusted line, never a per-ticket rewrite. Read-only.
+
 ## 0.6.0
 
 ### Added

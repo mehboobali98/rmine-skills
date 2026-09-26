@@ -60,7 +60,8 @@ all of these before drawing any conclusion:
 Both are reported because they answer different questions and often disagree.
 
 - **Weighted** (total actual / total estimated) is what a sprint's capacity
-  planning cares about, and is dominated by the largest tickets.
+  planning cares about (`/sprint-plan` uses it, once this bar is met), and is
+  dominated by the largest tickets.
 - **Median** is the typical ticket, and ignores size.
 
 When they diverge, drift is not uniform — most likely small tickets and large
