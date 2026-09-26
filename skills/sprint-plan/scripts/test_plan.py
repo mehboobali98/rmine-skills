@@ -89,6 +89,8 @@ def test_plan():
     check("unestimated listed", sorted(r["id"] for r in result["unestimated"]), [4, 6])
     check("team capacity excludes unassigned", result["team"]["capacity"], 32 + 40 + 40)
     check("busiest first", result["people"][0]["name"], "Jane")
+    check("each person's tickets, largest first", [i["id"] for i in people["Jane"]["items"]], [1, 2])
+    check("unestimated ticket carries no numbers", people["Omar"]["items"][1]["remaining"], None)
 
 
 def test_estimate_file_overrides_redmine():
