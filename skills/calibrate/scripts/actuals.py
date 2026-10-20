@@ -31,6 +31,17 @@ ISSUE_RE = re.compile(r"/issues/(\d+)")
 # estimate/SKILL.md asks for. Those must never claim the Total. The `**` allows
 # for the bold the header carries when the estimate came out of a rich-text doc.
 REDMINE_HEADER_RE = re.compile(r"^\**\s*Redmine\s*\**\s*:\s*\S*/issues/(\d+)", re.I)
+# `Mode:` says which column of the rubric an estimate was priced from. The two
+# can sit more than twice apart for the same ticket, so they never share an
+# aggregate. Estimates written before 0.9.0 have no Mode: line.
+MODE_HEADER_RE = re.compile(r"^\**\s*Mode\s*\**\s*:\s*\**\s*(?P<mode>[A-Za-z-]+)", re.I)
+
+# The calibration bar. A ticket below this fraction of its group's median is
+# well below the rest, which is what under-logging looks like. Measuring it
+# against 1.0 instead flagged every ticket of a team that steadily
+# overestimates, and hid the drift this analysis exists to find (#9).
+LOW_VS_REST = 0.5
+MIN_TICKETS = 20
 
 # Estimates are written as multi-level outlines and the numbering survives the
 # export, so the Total arrives as "6. Total (16 hrs ~ 4 points)". Stripping the
@@ -78,9 +89,17 @@ def parse_total(line):
 
 
 def parse_estimates(path):
-    """Yield (issue_id, estimated_hours) for every estimate found in a file.
+    """Yield (issue_id, estimated_hours) for every estimate found in a file."""
+    for issue_id, hours, _ in parse_estimate_records(path):
+        yield issue_id, hours
 
-    Works for a single estimate file and for one file holding many.
+
+def parse_estimate_records(path):
+    """Yield (issue_id, estimated_hours, mode) for every estimate in a file.
+
+    mode is the estimate's `Mode:` header, lower-cased, or None when the
+    estimate has none. Works for a single estimate file and for one file
+    holding many.
 
     A `Redmine:` header claims the Total that follows it, and nothing else can
     take it away. Older estimates that carry a bare issue URL instead still
@@ -92,11 +111,16 @@ def parse_estimates(path):
     """
     current = None
     from_header = False
+    mode = None
     with open(path) as f:
         for line in f:
             header = REDMINE_HEADER_RE.match(content(line))
             if header:
                 current, from_header = header.group(1), True
+                continue
+            stated = MODE_HEADER_RE.match(content(line))
+            if stated:
+                mode = stated.group("mode").lower()
                 continue
             found = ISSUE_RE.search(line)
             if found:
@@ -105,9 +129,9 @@ def parse_estimates(path):
                 continue
             hours = parse_total(line)
             if hours is not None and current:
-                yield current, hours
-                # One total per issue; the next estimate re-establishes both.
-                current, from_header = None, False
+                yield current, hours, mode
+                # One total per issue; the next estimate re-establishes all three.
+                current, from_header, mode = None, False, None
 
 
 def logged_hours(issue_id, profile=None):
@@ -156,7 +180,12 @@ def issue_status(issue_id, profile=None):
 
 
 def collect(paths):
-    """Gather (issue_id, hours) from files and directories.
+    """Gather {issue_id: hours} from files and directories."""
+    return {issue_id: hours for issue_id, (hours, _) in collect_records(paths).items()}
+
+
+def collect_records(paths):
+    """Gather {issue_id: (hours, mode)} from files and directories.
 
     A ticket estimated in more than one file keeps the last one read, in the
     sorted order below — which is filename order, not date order.
@@ -172,9 +201,63 @@ def collect(paths):
 
     seen = {}
     for path in files:
-        for issue_id, hours in parse_estimates(path):
-            seen[issue_id] = hours
+        for issue_id, hours, mode in parse_estimate_records(path):
+            seen[issue_id] = (hours, mode)
     return seen
+
+
+def plural(n, noun):
+    return f"{n} {noun}" + ("" if n == 1 else "s")
+
+
+def well_below(ratio, group_median):
+    """Whether a ticket sits so far under the rest that its logging is suspect."""
+    return ratio < LOW_VS_REST * group_median
+
+
+def summarize(rows):
+    """Aggregate drift for one group of tickets, all priced in the same mode.
+
+    `consistent` counts tickets within ±25% of the group's own median: whether
+    there is a pattern at all. `accurate` counts tickets within ±25% of 1.0:
+    whether the estimates were right. A team that steadily overestimates is
+    consistent and not accurate, which is exactly the drift worth correcting.
+    """
+    ratios = sorted(r["ratio"] for r in rows)
+    mid = median(ratios)
+    estimated = sum(r["estimated"] for r in rows)
+    actual = sum(r["actual"] for r in rows)
+    return {
+        "tickets": len(ratios),
+        "estimated": estimated,
+        "actual": actual,
+        "weighted": actual / estimated,
+        "median": mid,
+        "low": ratios[0],
+        "high": ratios[-1],
+        "consistent": sum(1 for x in ratios if 0.75 * mid <= x <= 1.25 * mid),
+        "accurate": sum(1 for x in ratios if 0.75 <= x <= 1.25),
+        "well_below_rest": sum(1 for x in ratios if well_below(x, mid)),
+    }
+
+
+def bar(s):
+    """The conditions of SKILL.md's bar that a summary doesn't meet.
+
+    An empty list means the numbers clear it. Whether the tickets flagged as
+    well below the rest were really under-logged is for the developer to say,
+    so it isn't decided here.
+    """
+    unmet = []
+    if s["tickets"] < MIN_TICKETS:
+        unmet.append(f"{plural(s['tickets'], 'ticket')}; the bar needs {MIN_TICKETS}+")
+    if s["consistent"] * 2 <= s["tickets"]:
+        unmet.append("half or fewer sit within ±25% of the median: no consistent pattern")
+    if 0.75 <= s["median"] <= 1.25:
+        unmet.append("the median is within ±25% of 1.0: nothing systematic to correct")
+    if (s["weighted"] - 1) * (s["median"] - 1) < 0:
+        unmet.append("weighted and median point different ways")
+    return unmet
 
 
 def main():
@@ -184,12 +267,12 @@ def main():
     ap.add_argument("--json", action="store_true", help="emit JSON instead of a table")
     args = ap.parse_args()
 
-    estimates = collect(args.paths)
+    estimates = collect_records(args.paths)
     if not estimates:
         sys.exit("no estimates found — expected a Redmine issue URL and a Total line")
 
     rows, missing = [], []
-    for issue_id, est in sorted(estimates.items(), key=lambda kv: int(kv[0])):
+    for issue_id, (est, mode) in sorted(estimates.items(), key=lambda kv: int(kv[0])):
         try:
             work, nonwork, users = logged_hours(issue_id, args.profile)
         except Exception as e:
@@ -202,43 +285,57 @@ def main():
             "issue": issue_id, "estimated": est, "actual": work,
             "ratio": work / est, "excluded": nonwork, "loggers": users,
             "status": issue_status(issue_id, args.profile),
+            "mode": mode or "unstated",
         })
 
+    groups = {}
+    for r in rows:
+        groups.setdefault(r["mode"], []).append(r)
+    summaries = {mode: summarize(group) for mode, group in groups.items()}
+    for r in rows:
+        r["well_below_rest"] = well_below(r["ratio"], summaries[r["mode"]]["median"])
+
     if args.json:
-        print(json.dumps({"rows": rows, "missing": [
-            {"issue": i, "estimated": e, "reason": r} for i, e, r in missing]}, indent=2))
+        print(json.dumps({
+            "rows": rows,
+            "missing": [{"issue": i, "estimated": e, "reason": r} for i, e, r in missing],
+            "modes": {m: dict(s, unmet=bar(s)) for m, s in summaries.items()},
+        }, indent=2))
         return
 
     print(f"{'issue':>7} {'est':>7} {'actual':>7} {'ratio':>6} {'who':>4} "
-          f"{'status':<12} notes")
+          f"{'mode':<13} {'status':<12} notes")
     for r in rows:
         notes = []
         if r["excluded"]:
             notes.append(f"excluded {r['excluded']:g}h non-work")
-        if r["ratio"] < 0.5:
-            notes.append("suspect under-logging")
+        if r["well_below_rest"]:
+            notes.append("well below the rest: ask whether all time was logged")
         print(f"{r['issue']:>7} {r['estimated']:>7g} {r['actual']:>7.1f} "
-              f"{r['ratio']:>6.2f} {r['loggers']:>4} {r['status']:<12} "
+              f"{r['ratio']:>6.2f} {r['loggers']:>4} {r['mode']:<13} {r['status']:<12} "
               f"{', '.join(notes)}")
 
     for issue_id, est, reason in missing:
-        print(f"{issue_id:>7} {est:>7g} {'—':>7} {'—':>6} {'—':>4} {'—':<12} {reason}")
+        print(f"{issue_id:>7} {est:>7g} {'—':>7} {'—':>6} {'—':>4} {'—':<13} {'—':<12} {reason}")
 
     if not rows:
         sys.exit("\nno tickets had logged time — nothing to calibrate against")
 
-    ratios = sorted(r["ratio"] for r in rows)
-    total_est = sum(r["estimated"] for r in rows)
-    total_act = sum(r["actual"] for r in rows)
-    within = sum(1 for x in ratios if 0.75 <= x <= 1.25)
-
     print(f"\ncovered          {len(rows)} of {len(estimates)} tickets"
           f" ({len(missing)} without usable logged time)")
-    print(f"weighted ratio   {total_act / total_est:.2f}  "
-          f"({total_act:g}h actual / {total_est:g}h estimated)")
-    print(f"median ratio     {median(ratios):.2f}")
-    print(f"spread           {ratios[0]:.2f} – {ratios[-1]:.2f}")
-    print(f"within +/-25%    {within} of {len(rows)}")
+    # Each mode prices from its own rubric column, so each gets its own numbers.
+    for mode in sorted(summaries):
+        s = summaries[mode]
+        unmet = bar(s)
+        print(f"\n{mode}: {plural(s['tickets'], 'ticket')}")
+        print(f"  weighted ratio   {s['weighted']:.2f}  "
+              f"({s['actual']:g}h actual / {s['estimated']:g}h estimated)")
+        print(f"  median ratio     {s['median']:.2f}")
+        print(f"  spread           {s['low']:.2f} – {s['high']:.2f}")
+        print(f"  consistent       {s['consistent']} of {s['tickets']} within ±25% of the median")
+        print(f"  accurate         {s['accurate']} of {s['tickets']} within ±25% of 1.0")
+        print(f"  well below rest  {s['well_below_rest']}  (ask about these before trusting the bar)")
+        print(f"  bar              {'met' if not unmet else 'not met: ' + '; '.join(unmet)}")
     print("\nThe weighted ratio is dominated by big tickets; the median is not.")
     print("When they disagree, the drift is not uniform — read the table, and")
     print("see SKILL.md before changing any anchor.")

@@ -209,6 +209,75 @@ def test_parses_a_numbered_outline_estimate():
     check("numbered outline parsed", found, {"54039": 16.0})
 
 
+def records_of(content):
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+        f.write(content)
+        path = f.name
+    try:
+        return list(actuals.parse_estimate_records(path))
+    finally:
+        os.unlink(path)
+
+
+# Agent-driven and hand-written estimates of the same ticket can sit more than
+# twice apart, so every estimate has to carry its mode into the analysis.
+# Estimates from before 0.9.0 have no Mode: line and come back as None.
+def test_reads_each_estimates_mode():
+    found = records_of(
+        "**Redmine**: https://redmine.example.com/issues/1\n"
+        "**Mode**: agent-driven\n"
+        "Total (6 hrs ~ 2 points)\n"
+        "Redmine: https://redmine.example.com/issues/2\n"
+        "Mode: hand-written\n"
+        "Total (12 hrs ~ 3 points)\n"
+        "Redmine: https://redmine.example.com/issues/3\n"
+        "Total (8 hrs ~ 2 points)\n"
+    )
+    check("modes per estimate", found, [
+        ("1", 6.0, "agent-driven"), ("2", 12.0, "hand-written"), ("3", 8.0, None)])
+
+
+def rows_at(*ratios):
+    return [{"estimated": 10.0, "actual": 10.0 * r, "ratio": r} for r in ratios]
+
+
+# The bug from #9: a ticket was flagged as suspect under-logging whenever it
+# came in under half its estimate. A team whose estimates run a steady 2x high
+# had every ticket flagged, and none of them within ±25% of 1.0, so the one
+# drift calibration exists to find always read as noise.
+def test_a_steady_overestimate_is_consistent_not_noise():
+    s = actuals.summarize(rows_at(0.40, 0.42, 0.45, 0.45, 0.48, 0.50))
+    check("consistent around the median", s["consistent"], 6)
+    check("none accurate", s["accurate"], 0)
+    check("none flagged as well below the rest", s["well_below_rest"], 0)
+
+
+def test_scattered_ratios_are_not_consistent():
+    s = actuals.summarize(rows_at(0.05, 0.8, 1.0, 2.96))
+    check("scatter is not consistent", s["consistent"] * 2 <= s["tickets"], True)
+
+
+def test_flags_a_ticket_far_below_the_rest():
+    s = actuals.summarize(rows_at(0.1, 0.9, 1.0, 1.1))
+    check("one ticket well below the rest", s["well_below_rest"], 1)
+    check("flagged per ticket", actuals.well_below(0.1, s["median"]), True)
+    check("not flagged", actuals.well_below(0.9, s["median"]), False)
+
+
+def test_bar_is_met_by_a_steady_drift():
+    check("20 tickets steady at 0.45", actuals.bar(actuals.summarize(rows_at(*[0.45] * 20))), [])
+
+
+def test_bar_reasons():
+    accurate = actuals.bar(actuals.summarize(rows_at(*[1.0] * 20)))
+    check("accurate estimates have nothing to correct",
+          any("nothing systematic to correct" in r for r in accurate), True)
+    thin = actuals.bar(actuals.summarize(rows_at(*[0.45] * 6)))
+    check("six tickets are too few", any("needs 20+" in r for r in thin), True)
+    scattered = actuals.bar(actuals.summarize(rows_at(*([0.2, 0.5, 1.4, 3.0] * 5))))
+    check("scatter has no pattern", any("no consistent pattern" in r for r in scattered), True)
+
+
 def main():
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
