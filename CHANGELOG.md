@@ -4,6 +4,42 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.10.0
+
+### Fixed
+
+- **`/calibrate` read a steady overestimate as noise.**
+  ([#9](https://github.com/mehboobali98/rmine-skills/issues/9)) Its headline
+  count was tickets within ±25% of 1.0, and any ticket under half its estimate
+  was flagged as suspect under-logging. A team whose estimates ran a steady 2x
+  high had every ticket flagged and none counted, so the one drift calibration
+  exists to find could never clear the bar. The ticket behind #8 sat at 0.41
+  with every hour logged.
+
+  The script now asks two questions separately. `consistent` counts tickets
+  within ±25% of their own median: is there a pattern at all? `accurate`
+  counts tickets within ±25% of 1.0: were the estimates right? A ticket is
+  flagged only when it sits under half the median, well below the rest, and
+  the skill asks the developer about it rather than setting it aside. Each
+  mode (`agent-driven`, `hand-written`, and `unstated` for estimates from
+  before 0.9.0) gets its own numbers and its own `bar` line, since each prices
+  from a different rubric column. `/sprint-plan` applies a mode's drift only to
+  estimates priced in that mode.
+
+### Added
+
+- **`/postmortem`'s `scripts/rollup.py` — one view per anchor row, across
+  every postmortem.** One postmortem never moves a row, and gathering the same
+  row from several meant reopening every write-up. The roll-up reads each
+  postmortem's `Anchor rows`, groups the actual hours by row and by the mode
+  the work used, and sets them against that mode's column in the rubric as it
+  stands. Three or more postmortems outside a range on the same side make the
+  row a candidate for a rubric PR, with the lines to cite. `PARTIAL`
+  postmortems are never counted, ones with no `Mode:` line are listed without
+  a verdict, and rows the rubric doesn't have are listed rather than dropped.
+  It is how the Agent-driven column's *judgment* rows get replaced with
+  measurements.
+
 ## 0.9.0
 
 **Rubric change: estimates are priced as agent-driven work by default.** This
