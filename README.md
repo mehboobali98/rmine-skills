@@ -10,7 +10,7 @@ above: multi-step workflows that read a ticket and do something useful with it.
 
 | Skill | What it does |
 |---|---|
-| `/estimate <issue>` | Turns a Redmine ticket into a frontend/backend effort breakdown in hours and points — gated on spec completeness, priced against the actual codebase, then independently reviewed. |
+| `/estimate <issue>` | Turns a Redmine ticket into a frontend/backend effort breakdown in hours and points — gated on spec completeness, priced against the actual codebase, then independently reviewed. Priced by default as agent-driven work: the developer's time to describe, review and check what an agent writes. |
 | `/calibrate <paths>` | Compares past estimates against hours actually logged, to find out whether the rubric is systematically optimistic. Reports drift *and* whether the data is good enough to act on. |
 | `/log [day]` | Drafts a day's Redmine time entries from git activity: which ticket branches and review worktrees you touched, and for how long relative to each other. You give the day's total, it splits the hours, and nothing is logged until you approve the table. |
 | `/postmortem <issue>` | For one finished ticket, lines its estimate up against where the time went: git proposes which lines the development hours went into, the developer confirms, and each anchor row is checked against its range. Writes `postmortems/postmortem-<id>.md`, the per-ticket evidence a rubric PR has to cite. |
@@ -78,8 +78,11 @@ number to a customer should know:
 
 - The anchors were derived from **estimates, not outcomes**. They reproduce how
   those estimates were made, systematic error included.
-- The AI-assistance compression model is **a judgment about the nature of the
-  work, not a measurement**. The direction is sound; the magnitude is unproven.
+- Estimates are **agent-driven by default**: an agent writes the code, and a
+  line is priced as the developer's time to describe, review and check it. The
+  rubric's Agent-driven column rests on one postmortem and judgment, so those
+  estimates carry a `Range:` until more postmortems confirm it. `hand-written`
+  mode prices code typed by hand, from the original anchors.
 
 `/calibrate` is what closes that loop. See below.
 

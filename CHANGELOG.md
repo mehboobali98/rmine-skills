@@ -4,6 +4,64 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.9.0
+
+**Rubric change: estimates are priced as agent-driven work by default.** This
+lowers most estimates the team produces, sharply for build-heavy tickets.
+([#8](https://github.com/mehboobali98/rmine-skills/issues/8))
+
+### Changed
+
+- **The AI switch could only nudge a line inside a range written for code
+  typed by hand.** High rows went to the bottom, Medium to the middle, Low and
+  single-value rows stayed put, and unanchored lines had no rule at all. On the
+  team this rubric serves, an agent writes about 90% of the code and the
+  developer plans, steers, reviews, tests and demos. On the ticket behind #8 the
+  switch could discount 8.5 of an estimate's 60.25 hrs; the work took 25.
+
+  The switch is replaced by a **work mode** in a new `Mode:` header.
+  `agent-driven`, the default, prices a line as the developer's time to
+  describe it to the agent, review the diff and check that it works, for novel
+  work as much as routine: ten canvas lines with mostly no in-repo pattern came
+  in at about a third of their estimate, so novelty didn't hold their size.
+  `hand-written` prices from the original anchors, unchanged.
+
+- **The anchor table has an Agent-driven column**, next to the hand-written
+  hours, with a Basis for each figure: *measured* from the #8 postmortem,
+  *held* inside its hand-written range there, or *judgment*. It went in before
+  `/calibrate`'s bar could be met, and says so: a provisional figure beats one
+  known to run as much as two and a half times high. A new row covers canvas
+  work with no in-repo pattern, which the ticket had ten lines of and the table
+  had nothing for.
+
+- **`Demo + PR Reviews` is priced per screen, flow and backend area** in
+  agent-driven mode, not as a flat 2 hrs. With the code written by an agent,
+  checking it is where the hours go: on #8 review, demo and discussions were 8
+  of 25 hrs, the only part that ran over.
+
+- **The estimator and validator are told their own instinct is the risk.**
+  Both are models whose sense of effort was learned from human-typed code, so
+  any line priced from instinct, which is every unanchored line, came out
+  human-sized whatever the rubric said. The estimator now asks of each line how
+  long the developer spends describing, reviewing and checking it, and needs a
+  named reason to price above its agent-driven row. The validator's AI check
+  ran one way only, catching compression that went too far; it now catches
+  lines priced in the wrong mode in both directions, and no longer reads a low
+  agent-driven number as a finding by itself.
+
+- **Agent-driven estimates carry a `Range:`** around the Total: low if every
+  line goes as described, high if the lines named in `Assumptions:` need extra
+  review rounds. It stays until postmortems have measured the column.
+
+- **`check_format.py` requires `Mode:`**, and a `Range:` containing the Total
+  in agent-driven mode. Estimates written before 0.9.0 have no `Mode:` line and
+  now fail the check; `/calibrate` still reads them, since it needs only the
+  `Redmine:` header and the Total.
+
+- **`/postmortem` records the mode the work actually used** and reads anchor
+  rows in that column, so each finished agent-driven ticket becomes evidence for
+  the column it was priced from.
+
 ## 0.8.0
 
 ### Added
