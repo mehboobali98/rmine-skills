@@ -35,14 +35,30 @@ across a team's estimates is a lot of damage from one bad inference.
 Logged time is not ground truth. It is what people remembered to type in. Check
 all of these before drawing any conclusion:
 
-- **`within +/-25%` count.** This is the headline. If most tickets don't land
-  near their estimate, there is no systematic drift to correct — there is noise.
-  A median of 0.8 built from ratios of 0.05 and 2.96 is not "20% optimistic",
-  it's an average of unrelated numbers.
-- **`suspect under-logging` flags** (ratio < 0.5). A shipped ticket with a
-  fraction of its estimate logged did not take a fraction of the time. Someone
-  logged elsewhere, or not at all. These drag the aggregate down and are the
-  single biggest source of false optimism in this analysis.
+- **Mode.** Every estimate since 0.9.0 says in `Mode:` which rubric column it
+  was priced from, and the script reports each mode on its own: agent-driven
+  and hand-written estimates of the same ticket can sit more than twice apart,
+  so pooling them measures the mix, not the drift. Estimates from before 0.9.0
+  report as `unstated`. They were priced from what is now the Hand-written
+  column, with the old in-range AI discount, so never read them alongside
+  agent-driven ones.
+- **`consistent` count** — tickets within ±25% of their mode's median. This is
+  the headline: whether there is a pattern at all. If most tickets don't sit
+  near the median, there is noise, not drift. A median of 0.8 built from ratios
+  of 0.05 and 2.96 is not "20% optimistic", it's an average of unrelated
+  numbers.
+- **`accurate` count** — tickets within ±25% of 1.0: whether the estimates
+  were right. Consistent but not accurate is the case worth correcting: every
+  ticket near 0.45 is a steady overestimate, not noise. Until 0.10.0 this count
+  was the headline, and a steady overestimate could never clear the bar (#9).
+- **`well below the rest` flags** (ratio under half the mode's median). A
+  shipped ticket that took a fraction of what its neighbours took may not have
+  taken a fraction of the time: someone logged elsewhere, or not at all. **Ask
+  the developer** whether all the time was logged, with AskUserQuestion, before
+  reading the bar. A ticket they confirm stays in as evidence; one they don't
+  is set aside, and you say which. Measured against the median rather than
+  against 1.0, so a team that steadily overestimates doesn't see every ticket
+  flagged.
 - **`no time logged` rows.** Tickets absent from the sample entirely. If these
   are a large share, logging is discretionary and the tickets that *do* have
   time are a self-selected group.
@@ -71,20 +87,33 @@ supports the change you were going to make.
 ## What to actually change
 
 **Default to changing nothing.** The bar for touching
-`skills/estimate/references/rubric.md` is high:
+`skills/estimate/references/rubric.md` is high, and is judged per mode:
 
-- more than half the tickets within ±25%, **and**
-- few under-logging flags, **and**
+- more than half the tickets within ±25% of the median, **and**
+- the median outside ±25% of 1.0 (inside it, there is nothing systematic to
+  fix), **and**
 - weighted and median pointing the same direction, **and**
+- few tickets well below the rest, after asking about them, **and**
 - enough tickets that a couple of outliers can't set the result — 20+.
+
+The script prints a `bar` line per mode with the first four of these checked;
+the under-logging question is yours to settle with the developer.
 
 Only then is there a signal. Even then, prefer the specific fix to the global
 one, in this order:
 
 1. **Adjust the individual anchor rows** whose work type shows consistent
-   drift across several tickets. Name the tickets in the PR description — an
-   anchor change without the evidence attached can't be reviewed or reverted
-   with confidence later.
+   drift across several tickets. `/calibrate` only sees whole tickets; the
+   row-level view comes from the postmortems:
+
+   ```sh
+   python3 "${CLAUDE_PLUGIN_ROOT}/skills/postmortem/scripts/rollup.py" <repo>/postmortems
+   ```
+
+   It lists each anchor row's actual hours across every postmortem, against
+   the rubric column for the mode the work used. Name the tickets in the PR
+   description — an anchor change without the evidence attached can't be
+   reviewed or reverted with confidence later.
 2. **Add a missing anchor row** when the drift concentrates on work the table
    doesn't cover. Estimates for work with no matching row are flagged in their
    `Assumptions:` block as the estimator's judgment rather than the team's

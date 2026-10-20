@@ -92,9 +92,10 @@ what remains.
 ## 5. Drift
 
 Only adjust for estimation drift if `/calibrate`'s own bar is met on the
-current corpus: run its script, and check for 20+ tickets, more than half
-within ±25%, few under-logging flags, and weighted and median pointing the
-same way.
+current corpus: run its script and read the `bar` line for each mode, plus
+the tickets flagged as well below the rest. The bar is per mode, so a mode's
+weighted ratio applies only to estimates priced in that mode (their `Mode:`
+line), never to the others.
 
 ```sh
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/calibrate/scripts/actuals.py" <repo>/estimates
@@ -105,7 +106,8 @@ If the bar isn't met, report unadjusted numbers and say plainly why, e.g.
 means anything."* That sentence is part of the report, not a footnote.
 
 If it is met, the adjustment is **one extra line**: the team's remaining work
-from `/estimate` files, multiplied by the weighted ratio. It never touches
+from `/estimate` files priced in that mode, multiplied by that mode's weighted
+ratio. It never touches
 estimates that came from Redmine's field, because the drift was measured on
 `/estimate` output and says nothing about how Redmine's numbers were made.
 Never rewrite a per-ticket estimate with it — `/calibrate` forbids blanket
