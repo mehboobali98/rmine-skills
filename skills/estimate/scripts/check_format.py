@@ -27,6 +27,11 @@ DISCUSSION_RE = re.compile(r"^Discussions \+ Additional cases:\s*(?P<hours>" + N
 PRICED_RE = re.compile(r"\((?P<hours>" + NUM + r")\s*(?:hrs?|hours?)\)\s*$")
 CONFIDENCE_RE = re.compile(r"^Confidence:\s*(High|Medium|Low)\b\s*(?P<why>.*)$")
 DATE_RE = re.compile(r"^Date:\s*(\d{4}-\d{2}-\d{2})\s*$")
+MODES = ("agent-driven", "hand-written")
+# "Range: 14–24 hrs" — en dash, hyphen or "to" between the ends
+RANGE_RE = re.compile(
+    r"^Range:\s*(?P<low>" + NUM + r")\s*(?:–|-|to)\s*(?P<high>" + NUM + r")\s*(?:hrs?|hours?)\s*$"
+)
 TOTAL_RE = re.compile(
     r"^Total \((?P<hours>" + NUM + r")\s*(?:hrs?|hours?)(?:\s*~\s*(?P<points>\d+)\s*(?:points?|pts?))?\)\s*$"
 )
@@ -174,7 +179,7 @@ def check_estimate(path, offset, lines):
         if sep:
             header.setdefault(key.strip(EMPHASIS), i)
 
-    for required in ("Task", "Redmine", "Estimated by", "Date", "Confidence"):
+    for required in ("Task", "Redmine", "Estimated by", "Date", "Confidence", "Mode"):
         if required not in header:
             problems.append(f"{path}:{offset + 1}: missing `{required}:` header line")
 
@@ -189,6 +194,31 @@ def check_estimate(path, offset, lines):
             flag(i, "Confidence must be High, Medium or Low")
         elif not confidence.group("why").strip(" -\u2014"):
             flag(i, "Confidence needs a reason after it — a bare grade says nothing")
+
+    # The same ticket can price more than twice apart between the modes, and an
+    # agent-driven total is the likely case of a spread, not a promise.
+    mode = None
+    if "Mode" in header:
+        i = header["Mode"]
+        value = content(lines[i]).replace("**", "").partition(":")[2].split()
+        mode = value[0].lower() if value else ""
+        if mode not in MODES:
+            flag(i, "Mode must be `agent-driven` or `hand-written`")
+    if "Range" in header:
+        i = header["Range"]
+        spread = RANGE_RE.match(content(lines[i]).replace("**", ""))
+        if not spread:
+            flag(i, "Range must read `Range: <low>–<high> hrs`")
+        else:
+            low, high = float(spread.group("low")), float(spread.group("high"))
+            if off_grid(low) or off_grid(high):
+                flag(i, "Range ends must sit on the 0.25 hr granularity")
+            if low > high:
+                flag(i, f"Range has its low end above its high end ({low:g} > {high:g})")
+            elif not low <= total_hours <= high:
+                flag(i, f"Range {low:g}–{high:g} must contain the Total ({total_hours:g})")
+    elif mode == "agent-driven":
+        problems.append(f"{path}:{offset + 1}: agent-driven estimates need a `Range:` header line")
 
     # --- Assumptions above Breakdown, so the total stays last ----------------
     heads = {}

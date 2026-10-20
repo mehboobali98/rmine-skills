@@ -82,6 +82,10 @@ in one round:
 - **Estimating time.** Time logged for reading the spec and writing the
   estimate is not work the estimate priced. Keep it out of the line
   comparison and report it on its own.
+- **How the work was actually done.** Agent-driven (an agent wrote most of the
+  code) or hand-written, whatever the estimate's `Mode:` assumed. The anchor
+  rows are read in the column for the mode the work *used*; a mismatch with the
+  estimate's mode is a finding of its own.
 
 ## 4. Confirm the split
 
@@ -94,7 +98,8 @@ work time, less estimating time; if they don't, say where the difference is.
 ## 5. Read the anchors
 
 For each line with an `Anchor:` row, compare the confirmed actual against the
-**anchor's range**, not just the line's estimate:
+**anchor's range** in the rubric column for the mode the work used, not just
+the line's estimate:
 
 - inside the range: the row held, whatever the line's estimate was;
 - outside it: the row looks wrong for this kind of work, and the line is
@@ -118,13 +123,14 @@ Redmine: <url>
 Estimate: estimates/estimate-<id>.md (<estimate date>, by <estimator>)
 Postmortem: <today>, confirmed by <developer>
 Status: <status>   [PARTIAL: ticket still in progress; not for rubric PRs]
+Mode: estimated <mode>, work done <agent-driven|hand-written>
 
 Summary: estimated <E> hrs, logged <L> hrs of work (<activities>), plus <S> hrs estimating.
 
 Lines:
 | # | Line | Anchor | Est | Actual | Basis |
 
-Anchor rows:
+Anchor rows (<mode> column):
 - <row> (<range>): actual <A> — inside / outside the range
 
 Scope not in the estimate: <files or work, with hours>

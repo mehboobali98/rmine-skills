@@ -44,7 +44,7 @@ rigor; a grab-bag dilutes that.
 
 5. **`check_format.py --strict`** for the soft rubric rules a script *can*
    compute: Testing at 10–15% of dev hours, the ~10 hr collapse threshold, the
-   Demo defaults by task size.
+   hand-written Demo defaults by task size.
 
 ## Releasing
 
