@@ -4,12 +4,17 @@ Two worked estimates showing the house format. **The numbers are invented** —
 they are here to demonstrate structure and specificity, not to calibrate
 anything. Calibration lives in the anchor table in `rubric.md`.
 
-Read these for four things:
+Read these for five things:
 
 - **Shape.** The required header lines, where `Assumptions:` sits,
   `Total (...)` as the literal last line, `N/A` for a layer that was considered
   and not needed. Both entries below pass `scripts/check_format.py`; run it on
   anything you write.
+- **Mode.** The first entry is `agent-driven`, the default: it carries a
+  `Range:` around its Total, its development lines are small because they
+  price the developer's time rather than the agent's, and its review line is
+  itemised by the screens and backend areas a reviewer has to check. The second
+  is `hand-written`, priced from the hand-written column with no range.
 - **Nesting.** A numbered outline — `1.` for sections, `a.` for line items,
   `i.` and deeper for sub-details. This is what a Google Doc produces, and the
   level a line sits at is what says whether it's a section, a priced item, or
@@ -24,9 +29,10 @@ Read these for four things:
   priced siblings still sum to the section — so nothing hides behind it.
 
 The non-development lines differ between the two on purpose: the first entry is
-under ~10 hrs, so Testing collapses into `Demo + PR Reviews + Testing`; the
-second is over, so Testing stands alone at roughly 10–15% of dev hours. Both
-rules are in `rubric.md`.
+under ~10 hrs, so Testing collapses into `Demo + PR Reviews + Testing`, and
+being agent-driven, that line is itemised by what has to be checked; the second
+is over, so Testing stands alone at roughly 10–15% of dev hours, and its review
+line is the hand-written flat default. The rules are in `rubric.md`.
 
 Note how `Confidence` differs between the two, and that neither is a bare
 grade — the reason is the part a reader can act on.
@@ -48,23 +54,29 @@ to exist, you'll get real time entries for unrelated work.
 **Date**: 2026-03-04
 **Confidence**: High — every line item priced from a matching anchor row against
   the existing CSV exporter pattern
+**Mode**: agent-driven
+**Range**: 5–9 hrs
 **Assumptions**:
-    AI-assisted development. The CSV exporter pattern is treated as shipped and
-    reusable. Least confident in the background-job threshold.
+    The CSV exporter pattern is treated as shipped and reusable. The background
+    job for large exports sets the top of the range: if the agent's first
+    version doesn't batch, it takes extra review rounds.
 **Breakdown**:
-    1. Backend (3.5 hrs)
-        a. Export service following the existing CSV exporter pattern (2 hr)
+    1. Backend (2 hrs)
+        a. Export service following the existing CSV exporter pattern (0.75 hr)
             i. Column selection from the list view preference
             ii. Background job for exports over 10k rows
         b. Controller action, route, ability (0.5 hr)
-        c. Serializer changes for the export payload (0.5 hr)
+        c. Serializer changes for the export payload (0.25 hr)
         d. Rake task to backfill the export_enabled flag for existing tenants (0.5 hr)
-    2. Frontend (2 hrs)
-        a. Export button and format dropdown in the listing toolbar (1 hr)
+    2. Frontend (1 hr)
+        a. Export button and format dropdown in the listing toolbar (0.5 hr)
             i. Redux slice, action mapper, API method
-        b. Progress toast for background exports (1 hr)
+        b. Progress toast for background exports (0.5 hr)
     3. Demo + PR Reviews + Testing (3 hrs)
-    4. Total (8.5 hrs ~ 2 points)
+        a. Export flow in the browser: both formats, column selection, a 10k+ row export (1.5 hr)
+        b. Careful read of the backfill and ability changes (0.5 hr)
+        c. Specs for the exporter and the backfill, and the demo (1 hr)
+    4. Total (6 hrs ~ 2 points)
 
 **Task**: Track who changed a widget and when
 **Redmine**: https://redmine.example.com/issues/12346
@@ -72,10 +84,11 @@ to exist, you'll get real time entries for unrelated work.
 **Date**: 2026-03-06
 **Confidence**: Medium — the retention policy is unspecified and priced into
   Discussions rather than calibrated
+**Mode**: hand-written
 **Assumptions**:
-    AI-assisted development. No frontend surface in scope — the history tab is
-    ticket 12350 and is priced there, not here. Retention policy unspecified and
-    priced into Discussions.
+    Hand-written at the requester's call. No frontend surface in scope — the
+    history tab is ticket 12350 and is priced there, not here. Retention policy
+    unspecified and priced into Discussions.
 **Breakdown**:
     1. Backend (7 hrs)
         a. Schema change (0.5 hr)

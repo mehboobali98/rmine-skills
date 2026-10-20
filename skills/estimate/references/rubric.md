@@ -25,9 +25,12 @@ the way it comes out of a Google Doc:
 **Estimated by**: <name>
 **Date**: <YYYY-MM-DD>
 **Confidence**: <High|Medium|Low> — <the one thing driving it>
+**Mode**: <agent-driven|hand-written>
+**Range**: <low>–<high> hrs                    ← required in agent-driven mode
 **Assumptions**:
-    <what the number depends on — whether AI assistance was applied, linked
-     tickets treated as shipped, non-blocking gaps priced into Discussions,
+    <what the number depends on — linked tickets treated as shipped,
+     non-blocking gaps priced into Discussions, lines priced above their
+     agent-driven row and why, the lines that set the top of the range,
      least-confident areas>
 **Breakdown**:
     1. Backend (X hrs)
@@ -67,6 +70,9 @@ Rules that hold on every estimate:
 - Sub-details sit under a priced line item without prices of their own — they
   justify the number, they don't subdivide it. Nest them as deep as the work
   needs; the checker only cares that they are deeper than the item they explain.
+- **`Mode:` is `agent-driven` or `hand-written`** — see `## Work mode`. An
+  agent-driven estimate also carries `Range: <low>–<high> hrs`, and the Total
+  sits inside it.
 - **The header lines are all required.** `check_format.py` enforces every rule
   in this section, so an estimate that drifts fails loudly instead of silently
   dropping out of the calibration corpus.
@@ -97,10 +103,22 @@ estimate visible when the ticket has moved on since.
 
 ## The non-development lines
 
-- **Testing** — its own line, roughly 10–15% of dev hours. Under ~10 hrs total,
-  it collapses into `Demo + PR Reviews + Testing (N hr)`.
-- **Demo + PR Reviews** — 2 hrs is the default and covers most tasks. 0.5 for
-  something trivial, 4 when the task is 50+ hrs.
+- **Testing** — its own line, roughly 10–15% of dev hours in either mode. Under
+  ~10 hrs total, it collapses into `Demo + PR Reviews + Testing (N hr)`. In
+  agent-driven mode the agent writes the specs; the hours are deciding what to
+  verify and reading what it wrote.
+- **Demo + PR Reviews**
+  - *Hand-written:* 2 hrs is the default and covers most tasks. 0.5 for
+    something trivial, 4 when the task is 50+ hrs.
+  - *Agent-driven:* this is where most of the developer's time now goes, so it
+    is priced from what the spec touches rather than as a flat figure. About
+    1–2 hrs for each screen or user flow someone has to click through (browser
+    checks, UI feedback rounds), 0.5 for each backend area whose diff needs a
+    careful read (permissions, data changes), and 0.5–1 for the demo. Write
+    them as line items under the section. Provisional: on the ticket behind
+    [issue #8](https://github.com/mehboobali98/rmine-skills/issues/8), review,
+    demo and discussions took 8 of 25 hrs, the only part of the estimate that
+    ran over.
 - **Discussions + Additional cases** — 2–4 hrs, and only when the spec left
   real questions open. This is where acknowledged uncertainty gets priced
   instead of being smuggled into padded line items. If the auditor flagged
@@ -147,67 +165,98 @@ Typical hours for recurring work. This table is the calibration — price
 against it directly, and say so in the line item when a piece of work has no
 close match here.
 
-The **Compresses** column is how much AI-assisted coding is expected to reduce
-the work — see the section below for how to apply it.
+Price from the column for the estimate's `Mode:` — see `## Work mode`. The
+**Agent-driven** column is the developer's time when an agent writes the code.
+**Basis** says what each agent-driven figure rests on: *measured* rows come from
+a postmortem, *held* rows stayed inside their hand-written range on one, and
+*judgment* rows haven't been measured yet. The whole column is provisional
+until postmortems confirm it; see `## Known bias`.
 
-| Work | Hours | Compresses |
-|---|---|---|
-| New column + migration | 0.25–0.5 | High |
-| Model only (associations, validations) | 0.25–1 | High |
-| Controller + routes + ability + CRUD actions | 2–4 | Medium |
-| Presenter or serializer changes | 0.25–1 | High |
-| List view preference | 0.5–2 | High |
-| Filters on an existing pattern | 1–2 | High |
-| Rake task to backfill existing tenants | 1–4 | Medium |
-| Global / elastic search integration | ~4 | Low |
-| Permission handling across a module | 5–8 | Low |
-| Sync / integration logic against a third-party API | 4+ | Low |
-| New full listing screen (FE) | 4–6 | High |
-| Modal + redux + action mapper (FE) | ~2 | High |
-| Adding a column to an existing listing (FE) | 0.5–1 | High |
-| Settings toggle exposure (FE) | 0.25–0.5 | High |
-| Canvas / visualization work reusing existing code | ~4 | Low |
+| Work | Hand-written | Agent-driven | Basis |
+|---|---|---|---|
+| New column + migration | 0.25–0.5 | 0.25–0.5 | held (#8) |
+| Model only (associations, validations) | 0.25–1 | 0.25–1 | held (#8) |
+| Controller + routes + ability + CRUD actions | 2–4 | 0.5–1 | measured once (#8) |
+| Presenter or serializer changes | 0.25–1 | 0.25–1 | held (#8) |
+| List view preference | 0.5–2 | 0.25–0.5 | measured once (#8) |
+| Filters on an existing pattern | 1–2 | 0.25–0.5 | judgment |
+| Rake task to backfill existing tenants | 1–4 | 0.5–2 | judgment |
+| Global / elastic search integration | ~4 | 1–2 | judgment |
+| Permission handling across a module | 5–8 | 2–4 | judgment |
+| Sync / integration logic against a third-party API | 4+ | 2+ | judgment |
+| New full listing screen (FE) | 4–6 | 1–2 | judgment |
+| Modal + redux + action mapper (FE) | ~2 | 0.75–1 | measured once (#8) |
+| Adding a column to an existing listing (FE) | 0.5–1 | 0.5–1 | held (#8) |
+| Settings toggle exposure (FE) | 0.25–0.5 | 0.25 | judgment |
+| Canvas / visualization work reusing existing code | ~4 | 0.5–1 | measured once (#8) |
+| Canvas / visualization element with no in-repo pattern | ~2 | 0.5–1 | measured once (#8) |
 
-## AI-assisted development
+## Work mode
 
-**This section is a switch, and the caller decides which way it is set.** The
-default is on: the team codes with an AI assistant day to day. When it is off,
-ignore this section entirely and use the anchor ranges as written — unmodified
-is what they were derived from.
+**Every estimate is priced in one of two modes, and the `Mode:` header says
+which.** The same ticket can price more than twice apart between them, and a
+reader who can't tell which they're holding will misread the number.
 
-Either way, the `Assumptions:` block must say which way it ran. Two estimates
-for the same ticket differ materially depending on this, and a reader who
-can't tell which they're holding will misread the number.
+- **`agent-driven` — the default.** An agent writes the code. The developer
+  plans the work, describes it to the agent, steers and reviews the diff, checks
+  that it works, and demos it. A line's hours are that developer time, not the
+  time it would take to type the code. Price from the **Agent-driven** column.
+- **`hand-written`.** A person writes the code. Price from the **Hand-written**
+  column, as written. Use it only when the caller says the work will be typed by
+  hand.
 
-Assistance does not scale work down uniformly, so there is no single multiplier
-to apply to a total. It compresses **pattern-following work** — code where the
-codebase already contains twenty examples of the same shape, and the job is
-producing the twenty-first correctly. It barely touches **judgment,
-integration, and coordination work** — deciding who may see what, debugging
-against a live third-party API, iterating on UX, agreeing scope in a demo.
+There is still no multiplier to apply to a total. Each row carries its own
+agent-driven figure, because an agent doesn't shorten every kind of work by the
+same amount.
 
-How to apply it:
+### Pricing agent-driven work
 
-- **High** — price at the **bottom** of the anchor range.
-- **Medium** — price at the **middle**.
-- **Low** — the range stands, unchanged.
-- Single-value anchors (`~4`, `4+`) have no range to move within. Leave them
-  and say so in the line item rather than inventing a discount.
+For each line the question is not *how long does this take to build*. It is how
+long the developer will spend on three things:
 
-Two consequences worth stating explicitly, because a flat multiplier gets both
-wrong:
+1. **Describing it to the agent** — reading the code it touches, deciding the
+   approach, writing the task.
+2. **Steering and reviewing the diff** until it is right.
+3. **Checking that it works** — running it, clicking through it, trying the
+   edge cases.
 
-1. **The non-development lines do not compress at all.** Demo, PR reviews, and
-   the Discussions buffer are human coordination. Testing compresses somewhat
-   for writing specs, not for deciding what to verify. As dev hours come down
-   these become a *larger* share of the total, not a proportional one.
-2. **Unfamiliar work compresses least.** Assistance is most effective where
-   there is an established in-repo pattern to follow, which is exactly the work
-   that was cheap to begin with. A genuinely novel service gains the least.
+That holds for new work as much as for routine work. An agent writes code with
+no in-repo pattern about as fast as code with twenty examples to copy, so
+novelty doesn't keep a line at hand-written size. On the ticket behind
+[issue #8](https://github.com/mehboobali98/rmine-skills/issues/8), ten canvas
+lines with mostly no pattern to follow took 7 hrs against 21.25 estimated,
+about a third; the routine rows came in at an eighth to a half of theirs.
 
-**This split is a judgment about the nature of the work, not a measurement.**
-Nothing here has been validated against hours actually logged. Treat the
-direction as sound and the magnitude as unproven.
+**A line priced above its agent-driven row needs a named reason in its
+sub-detail.** An agent speeds up least the work whose time goes into waiting,
+deciding or checking real data rather than writing:
+
+- debugging against a live third-party API;
+- UX back-and-forth with stakeholders;
+- migrations and backfills run against customer data;
+- performance work that has to be measured against production-sized data.
+
+A line with no close anchor row is priced the same way, by the three questions,
+and listed in `Assumptions:` as judgment.
+
+**Distrust your own sense of effort.** Whoever prices or reviews an estimate,
+person or model, learned how long code takes from code typed by hand. On
+agent-driven work that sense runs high, by as much as two and a half times.
+When a line feels too cheap, check it against the Agent-driven column, not
+against instinct.
+
+### The range
+
+An agent-driven `Total` is the likely case, not a promise. When the agent gets a
+line right first time it is quick; when it takes a wrong turn, the cost is extra
+review rounds. So every agent-driven estimate carries a `Range:` line:
+
+- **low end** — every line goes as described;
+- **high end** — the lines most likely to go wrong take extra review rounds.
+  Name them in `Assumptions:`.
+
+The Total sits inside the range. The range stays until postmortems have measured
+the Agent-driven column — see `## Known bias`.
 
 ## Line items name real things
 
@@ -234,8 +283,18 @@ remembered to type in, and a corpus where few tickets land near their estimate
 is measuring logging habits, not estimation error. `/calibrate` documents the
 bar a result has to clear before any anchor here should move.
 
-Until it clears that bar, **no correction is applied to these anchors,
-deliberately** — a confident multiplier derived from noisy data is worse than
-an acknowledged unknown. Treat the anchors as an unvalidated starting point,
-and say plainly that the calibration is unproven when an estimate is going
-somewhere it matters.
+Until it clears that bar, **no correction is applied to the hand-written
+column, deliberately** — a confident multiplier derived from noisy data is
+worse than an acknowledged unknown. Treat the anchors as an unvalidated starting
+point, and say plainly that the calibration is unproven when an estimate is
+going somewhere it matters.
+
+The **Agent-driven** column is younger and thinner still. Its *measured* rows
+rest on one postmortem, and its *judgment* rows on nothing but the measured
+ones. It went in before `/calibrate`'s bar could be met, also deliberately: it
+replaced a rule that could only move a line within its hand-written range,
+which on the ticket behind issue #8 could discount 8.5 of an estimate's 60.25
+hrs when the work took 25. A provisional figure is better than one known to
+run as much as two and a half times high. Grow it the way the hand-written
+column should have been grown: a `/postmortem` for each finished agent-driven
+ticket, and a PR naming them whenever a row moves.

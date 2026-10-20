@@ -26,11 +26,19 @@ Start by running the format checker on the estimate file you were given:
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/estimate/scripts/check_format.py" <estimate path>
 ```
 
-It covers arithmetic, `points = round(hours / 4)`, the required header lines,
+It covers arithmetic, `points = round(hours / 4)`, the required header lines
+(`Mode:` among them, and `Range:` containing the Total in agent-driven mode),
 `Assumptions:` above `Breakdown:`, `Total` as the literal last line, `N/A`
 rather than a missing layer, and 0.25 granularity. Report whatever it prints
 verbatim — those are facts, not judgment, and re-deriving them by hand wastes
 the pass.
+
+**Before you judge any number, read the estimate's `Mode:`.** Most estimates
+are `agent-driven`: an agent writes the code and the hours are the developer's
+time to describe, review and check it. Your own sense of effort was learned
+from code typed by hand and runs as much as two and a half times high on this
+work, so a line that looks cheap to you is not a finding by itself. Judge it
+against the rubric's Agent-driven column, not against instinct.
 
 **Then spend your attention on the checks below, every one of which is
 judgment no script can make.**
@@ -40,15 +48,21 @@ judgment no script can make.**
    search integration. Backfill and search are the two most often forgotten.
    Distinguish *correctly absent* from *forgotten* and say which.
 2. **Pricing** against the rubric's calibration anchors
-   (`skills/estimate/references/rubric.md`). Call out anything materially over
-   or under, naming the anchor row it should have priced from. Work with no
-   close match in the table should say so in the line item — flag it when it
-   silently borrows a row that doesn't fit.
+   (`skills/estimate/references/rubric.md`), in the column for the estimate's
+   mode. Call out anything materially over or under, naming the anchor row it
+   should have priced from. Work with no close match in the table should say so
+   in the line item — flag it when it silently borrows a row that doesn't fit.
 3. **Scope in the spec with no line item at all.**
 4. **Work owned by a linked ticket, priced here too** — the same hours
    estimated twice across two tickets.
-5. **AI compression applied where it doesn't belong** — demo, PR review, the
-   discussion buffer, or work with no established in-repo pattern to follow.
+5. **Lines priced in the wrong mode**, in both directions. In an agent-driven
+   estimate, the common failure is a line at hand-written size: above its
+   Agent-driven row with no named reason in its sub-detail, or an unanchored
+   line priced as the time to build it rather than to describe, review and
+   check it. "It's complex" is not a reason. Also check that `Demo + PR
+   Reviews` is priced per screen, flow and backend area, not as a flat figure.
+   In a hand-written estimate, the failure is the reverse: a line priced at
+   Agent-driven rates.
 6. **Double-counted risk** — a `Discussions` buffer covering an ambiguity that
    was already answered in the ticket, or an addition that already has its own
    priced line item.
