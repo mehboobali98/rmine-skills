@@ -139,5 +139,30 @@ Method: <N> commits on <branch> since <date> by <authors>; <M> dropped.
 Assigned by the developer: <file → line>.
 ```
 
+Keep the `Mode:` line and the `Anchor rows` lines in exactly that shape, with
+each row named as the rubric's table names it: `scripts/rollup.py` reads them,
+and a row it can't match is listed as missing rather than counted.
+
 Tell the user to commit it. A postmortem that isn't committed can't be linked
 from the rubric PR it exists to support.
+
+## 7. Roll up
+
+One postmortem never moves a row; the same row across several does. After
+writing one, or whenever someone is preparing a rubric PR, roll up every
+committed postmortem:
+
+```sh
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/postmortem/scripts/rollup.py" postmortems/
+```
+
+For each anchor row it lists the actual hours from every postmortem, grouped
+by the mode the work used, against that mode's column in the rubric as it
+stands today. A row becomes a **candidate for a rubric PR** when three or more
+postmortems put it outside its range, all on the same side (`--min` changes the
+three). The PR quotes those lines and links the postmortems. `PARTIAL`
+postmortems are never counted, and ones with no `Mode:` line are listed
+without a verdict until the line is added.
+
+The Agent-driven column's *judgment* rows are the ones waiting for this: each
+measurement the roll-up shows for one is the first evidence that row has.

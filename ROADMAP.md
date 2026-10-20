@@ -34,10 +34,12 @@ rigor; a grab-bag dilutes that.
 2. **Per-person drift.** `Estimated by` is captured on every estimate and
    `rubric.md` promises `/calibrate` reads it. `actuals.py` never parses it.
 
-3. **Anchor-row attribution.** `/calibrate` says to prefer fixing the specific
-   anchor row over a blanket multiplier, but it can only report whole-ticket
-   ratios — it structurally cannot produce the recommendation it tells you to
-   prefer. Needs line items to name their anchor row parseably.
+3. **Anchor-row attribution inside `/calibrate`.** `/calibrate` says to prefer
+   fixing the specific anchor row over a blanket multiplier, but it can only
+   report whole-ticket ratios. `/postmortem`'s `rollup.py` now gives the
+   row-level view from postmortems, which covers only the tickets someone
+   postmortemed; reading rows straight from every estimate in the corpus still
+   needs line items to name their anchor row parseably.
 
 4. **`/calibrate --audit`.** How many corpus files fail `check_format.py`, how
    many tickets have no logged time. Corpus health before corpus analysis.
