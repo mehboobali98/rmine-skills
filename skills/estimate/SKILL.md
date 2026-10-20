@@ -43,9 +43,12 @@ Then confirm two things about where you are:
 - **You are inside the product repo**, not this plugin's repo and not a home
   directory. The estimator greps for real services and tables; run anywhere
   else and it prices from imagination.
-- **AI-assistance is on or off.** The rubric defaults to on. If the user hasn't
-  said, assume on and record it in `Assumptions:` — don't ask, but never leave
-  it unstated, because the same ticket prices differently either way.
+- **The mode: `agent-driven` or `hand-written`.** The default is agent-driven:
+  an agent writes the code, and the developer plans, steers, reviews, tests and
+  demos. Use hand-written only when the user says the work will be typed by
+  hand. If they haven't said, use agent-driven — don't ask, but always write it
+  in the `Mode:` header, because the same ticket can price more than twice apart
+  between the two.
 
 Google Docs specs additionally need Google Drive connected. You'll find out in
 step 1; don't pre-check it.
@@ -137,7 +140,7 @@ Launch the **`effort-estimator`** agent from the repo the work lands in. Pass it
   worked estimates showing the shape and the level of specificity. **Their
   numbers are invented**; say so when you pass the path, so nothing anchors to
   them
-- whether AI-assistance is on or off
+- the mode, `agent-driven` or `hand-written`
 - any answers you got from the `WORTH ASKING` questions
 
 Its definition already covers grepping before pricing, pricing against the
@@ -171,10 +174,12 @@ product repo, creating the directory if it doesn't exist. Keep the format in
 later estimate-vs-actual pass can parse a directory of these without guessing.
 
 Fill the header from what you already have: `Estimated by` is the name from the
-`rmine whoami` you ran in preflight, `Date` is today in `YYYY-MM-DD`, and
+`rmine whoami` you ran in preflight, `Date` is today in `YYYY-MM-DD`,
 `Confidence` is graded on how much of the estimate came from the rubric's
-anchor table — see `## Confidence` there. Never emit a bare grade without the
-reason next to it.
+anchor table — see `## Confidence` there — and `Mode` is the one you settled in
+preflight. Never emit a bare grade without the reason next to it. An
+agent-driven estimate also keeps the estimator's `Range:` line; if reconciling
+the validator moved the Total, move the range with it.
 
 Then check it:
 
@@ -198,7 +203,8 @@ Include a short **Assumptions** block, placed **above `Breakdown:`** so the
 total stays last. Assumptions change how the number should be read, and a
 reader who doesn't see them will over-trust it:
 
-- whether the estimate assumes AI-assisted development
+- in agent-driven mode, any line priced above its agent-driven anchor row and
+  the reason, and the lines that set the top of the `Range:`
 - which linked tickets were treated as shipped foundations vs dependencies
 - anything the auditor flagged non-blocking that you priced into Discussions
 - which parts you're least confident in

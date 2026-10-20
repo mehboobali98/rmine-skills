@@ -21,8 +21,9 @@ Redmine: https://redmine.example.com/issues/12345
 Estimated by: A. Engineer
 Date: 2026-03-04
 Confidence: High — every line item priced from a matching anchor row
+Mode: hand-written
 Assumptions:
-  AI-assisted development.
+  The CSV exporter pattern is treated as shipped.
 Breakdown:
 Backend (2.5 hrs)
   Export service following the existing CSV exporter pattern (2 hr)
@@ -48,7 +49,7 @@ CASES = [
     ("trailing commentary",
      lambda s: s + "\nHappy to break this down further.\n", "nothing may follow the Total line"),
     ("assumptions below breakdown",
-     lambda s: s.replace("Assumptions:\n  AI-assisted development.\n", "")
+     lambda s: s.replace("Assumptions:\n  The CSV exporter pattern is treated as shipped.\n", "")
                 .replace("Breakdown:", "Breakdown:\nAssumptions:"), "must sit above"),
     ("missing header",
      lambda s: s.replace("Date: 2026-03-04\n", ""), "missing `Date:`"),
@@ -73,6 +74,29 @@ CASES = [
     ("N/A section with line items",
      lambda s: s.replace("Frontend (N/A)", "Frontend (N/A)\n  Something (1 hr)"), "N/A but has line items"),
 
+    # The same ticket can price more than twice apart between the modes, so an
+    # estimate that doesn't say which one it is can't be read at all.
+    ("missing mode",
+     lambda s: s.replace("Mode: hand-written\n", ""), "missing `Mode:`"),
+    ("unknown mode",
+     lambda s: s.replace("Mode: hand-written", "Mode: AI-assisted"), "agent-driven` or `hand-written"),
+    ("agent-driven needs a range",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven"), "need a `Range:`"),
+    ("agent-driven with a range",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven\nRange: 6–12 hrs"), None),
+    ("range written with a hyphen",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven\nRange: 6-12 hrs"), None),
+    ("range must contain the total",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven\nRange: 9–12 hrs"), "must contain the Total"),
+    ("range ends reversed",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven\nRange: 12–6 hrs"), "low end above its high end"),
+    ("range off the grid",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven\nRange: 6.1–12 hrs"), "0.25 hr granularity"),
+    ("range that isn't two numbers",
+     lambda s: s.replace("Mode: hand-written", "Mode: agent-driven\nRange: about a day"), "Range must read"),
+    ("hand-written may carry a range",
+     lambda s: s.replace("Mode: hand-written", "Mode: hand-written\nRange: 6–12 hrs"), None),
+
     # A file holding several estimates used to be checked only as far as the
     # last one — everything above it passed unread, and the file still printed
     # `ok`. references/format-examples.md is exactly that shape.
@@ -96,8 +120,10 @@ NUMBERED = """\
 **Estimated by**: A. Engineer
 **Date**: 2026-03-04
 **Confidence**: High — every line item priced from a matching anchor row
+**Mode**: agent-driven
+**Range**: 6–12 hrs
 **Assumptions**:
-    AI-assisted development.
+    The CSV exporter pattern is treated as shipped.
 **Breakdown**:
     1. Backend (2.5 hrs)
         a. Export service following the existing CSV exporter pattern (2 hr)
@@ -125,6 +151,8 @@ NUMBERED_CASES = [
      "sub-details justify"),
     ("bold headers are read",
      lambda s: s.replace("**Date**: 2026-03-04\n", ""), "missing `Date:`"),
+    ("bold range is read",
+     lambda s: s.replace("**Range**: 6–12 hrs", "**Range**: 9–12 hrs"), "must contain the Total"),
     # 1.c carries no hours on purpose: descriptive, not a slice of the total.
     ("descriptive line item is allowed",
      lambda s: s.replace("        c. Follows the existing exporter pattern throughout\n", ""), None),
