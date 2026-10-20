@@ -10,6 +10,8 @@ the developer confirm or correct it before anything is written.
     attribute.py --estimate estimates/estimate-55238.md --repo . \\
         --branch feature/55238_cdw_uk_pcb_record_correlation --json
     attribute.py ... --assign app/services/cdw/uk_record_consolidator.rb=3
+    attribute.py ... --base release/2.4 \\
+        --branch feature/55238_backend --branch feature/55238_frontend
 
 Stdlib only. Reuses /estimate's outline parser and /calibrate's time totals.
 """
@@ -136,30 +138,56 @@ def git(repo, *args):
     return r.stdout
 
 
-def find_base(repo, branch):
+def find_base(repo, branch, base=None):
+    """(name, merge-base sha) to measure a branch against.
+
+    `base` names it outright, for a branch cut from a release branch or
+    anything else the BASES search would skip past.
+    """
+    if base:
+        try:
+            return base, git(repo, "merge-base", base, branch).strip()
+        except RuntimeError:
+            raise RuntimeError("no merge base between %s and %s" % (base, branch))
     for candidate in BASES:
         try:
             return candidate, git(repo, "merge-base", candidate, branch).strip()
         except RuntimeError:
             continue
-    raise RuntimeError("no develop, main or master to measure %s against" % branch)
+    raise RuntimeError("no develop, main or master to measure %s against; pass --base" % branch)
 
 
 def branch_commits(repo, branch, base_sha):
-    """(author time, author, [files]) for the branch's own commits, oldest first.
+    """(sha, author time, author, [files]) for the branch's own commits, oldest first.
 
     --first-parent keeps out whatever was merged into the branch: a ticket
     branch that merged a long-lived branch in reaches thousands of commits
     that were not this ticket's work.
     """
-    out = git(repo, "log", "--first-parent", "--no-merges", "--reverse", "--format=\x01%at\t%an", "--name-only",
-              "%s..%s" % (base_sha, branch))
+    out = git(repo, "log", "--first-parent", "--no-merges", "--reverse", "--format=\x01%H\t%at\t%an",
+              "--name-only", "%s..%s" % (base_sha, branch))
     commits = []
     for chunk in out.split("\x01")[1:]:
         lines = [l for l in chunk.splitlines() if l.strip()]
-        when, _, author = lines[0].partition("\t")
-        commits.append((int(when), author, lines[1:]))
+        sha, when, author = lines[0].split("\t", 2)
+        commits.append((sha, int(when), author, lines[1:]))
     return commits
+
+
+def ticket_commits(repo, branches, base=None):
+    """(commits, bases): every branch's own commits as one oldest-first list.
+
+    Commits are (author time, author, [files]); bases maps each branch to what
+    it was measured against. Work split into a backend and a frontend branch
+    is one ticket's work, and a branch stacked on another reaches the other's
+    commits too, so a commit two branches share counts once.
+    """
+    seen, bases = {}, {}
+    for branch in branches:
+        bases[branch], base_sha = find_base(repo, branch, base)
+        for sha, when, author, files in branch_commits(repo, branch, base_sha):
+            seen.setdefault(sha, (when, author, files))
+    return sorted(seen.values(), key=lambda c: c[0]), bases
 
 
 def ticket_work(commits, authors, since):
@@ -241,7 +269,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--estimate", required=True, help="the ticket's estimate-<id>.md")
     ap.add_argument("--repo", required=True, help="the product repo holding the ticket branch")
-    ap.add_argument("--branch", help="the ticket branch (default: the one local branch naming the ticket)")
+    ap.add_argument("--branch", action="append", default=[],
+                    help="a branch holding the ticket's work (repeatable; default: the one local branch naming the ticket)")
+    ap.add_argument("--base", help="measure every branch against this ref instead of develop, main or master")
     ap.add_argument("--assign", action="append", default=[], metavar="FILE_OR_GLOB=N",
                     help="count a changed file toward item N (repeatable)")
     ap.add_argument("--author", action="append", default=[],
@@ -255,12 +285,13 @@ def main(argv=None):
         ap.error("no Redmine ticket found in %s" % args.estimate)
     items = parse_items(args.estimate)
 
-    branch = args.branch
-    if not branch:
-        found = [b.strip("* ").strip() for b in git(args.repo, "branch", "--list", "*%d*" % ticket).splitlines()]
+    branches = args.branch
+    if not branches:
+        found = [b.strip("*+ ").strip() for b in git(args.repo, "branch", "--list", "*%d*" % ticket).splitlines()]
         if len(found) != 1:
-            ap.error("pass --branch: %d local branches name #%d (%s)" % (len(found), ticket, ", ".join(found) or "none"))
-        branch = found[0]
+            ap.error("pass --branch once for each branch holding #%d's work: %d local branches name it (%s)"
+                     % (ticket, len(found), ", ".join(found) or "none"))
+        branches = found
     assign = {}
     for pair in args.assign:
         pattern, _, n = pair.rpartition("=")
@@ -273,8 +304,11 @@ def main(argv=None):
     estimated_on = estimate_date(args.estimate)
     since = (estimated_on - timedelta(days=1)).timestamp() if estimated_on else None
 
-    base_name, base_sha = find_base(args.repo, branch)
-    commits, dropped = ticket_work(branch_commits(args.repo, branch, base_sha), authors, since)
+    try:
+        all_commits, bases = ticket_commits(args.repo, branches, args.base)
+    except RuntimeError as e:
+        ap.error(str(e))
+    commits, dropped = ticket_work(all_commits, authors, since)
     share, unmatched = attribute(items, commits, assign)
     dev = by_activity.get("Development", 0.0)
     weights = {("item", n): s for n, s in share.items()}
@@ -289,7 +323,7 @@ def main(argv=None):
         "estimate_total": sum(it["estimate"] for it in items),
         "items": items,
         "logged": {"total": sum(by_activity.values()), "by_activity": by_activity, "entries": entries},
-        "git": {"branch": branch, "base": base_name, "commits": len(commits), "dropped": dropped,
+        "git": {"branches": branches, "bases": bases, "commits": len(commits), "dropped": dropped,
                 "authors": authors, "since": estimated_on.date().isoformat() if estimated_on else None,
                 "unmatched": [{"file": f, "share": round(s, 3), "proposed": proposed[("file", f)]}
                               for f, s in sorted(unmatched.items(), key=lambda kv: -kv[1])]},
@@ -300,8 +334,9 @@ def main(argv=None):
 
     print("#%d: estimated %.2fh, logged %.2fh (%s)" % (ticket, result["estimate_total"], result["logged"]["total"],
           ", ".join("%s %.2fh" % kv for kv in sorted(by_activity.items()))))
-    print("%s against %s: %d commits by %s since the estimate (%d others dropped)\n"
-          % (branch, base_name, len(commits), ", ".join(authors) or "anyone", dropped))
+    print("%s: %d commits by %s since the estimate (%d others dropped)\n"
+          % (", ".join("%s against %s" % (b, bases[b]) for b in branches), len(commits),
+             ", ".join(authors) or "anyone", dropped))
     print("%3s  %-16s %6s %8s %6s  %s" % ("N", "SECTION", "EST", "PROPOSED", "SHARE", "ITEM"))
     for it in items:
         print("%3d  %-16s %5.2fh %7.2fh %5d%%  %s%s" % (it["n"], (it["section"] or "")[:16], it["estimate"], it["proposed"],

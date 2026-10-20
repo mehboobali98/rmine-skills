@@ -4,6 +4,24 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.11.0
+
+### Added
+
+- **`/postmortem` measures work split across branches, or cut from a
+  non-standard base.** ([#10](https://github.com/mehboobali98/rmine-skills/issues/10))
+  `attribute.py` read one branch, measured against the first of develop, main
+  or master it found. A ticket built on a backend branch and a frontend branch
+  needed a wrapper script, and a branch cut from a release branch counted the
+  release branch's own commits as the ticket's work.
+
+  `--branch` is now repeatable, and the commits of every branch named are
+  attributed together in time order. A branch stacked on another reaches the
+  other's commits too, so a commit two branches share counts once. `--base`
+  names what to measure against, overriding the develop/main/master search.
+  The JSON output reports `branches` and the base each was measured against
+  (`bases`), in place of the single `branch` and `base`.
+
 ## 0.10.0
 
 ### Fixed

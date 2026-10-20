@@ -98,6 +98,68 @@ def write(repo, path, text):
         f.write(text)
 
 
+def commit(repo, path, when):
+    write(repo, path, "x")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", path, when=when)
+
+
+def repo_with_develop(root):
+    repo = os.path.join(root, "app")
+    os.makedirs(repo)
+    git(repo, "init", "-q", "-b", "develop")
+    commit(repo, "README", "2026-08-01T09:00:00Z")
+    return repo
+
+
+def files_of(commits):
+    return [f for _, _, files in commits for f in files]
+
+
+# A ticket split into a backend branch and a frontend branch stacked on it.
+# Measured one at a time, the frontend branch reaches the backend's commits
+# too, so they must count once, not twice.
+def test_two_branches_count_shared_commits_once():
+    with tempfile.TemporaryDirectory() as root:
+        repo = repo_with_develop(root)
+        git(repo, "checkout", "-q", "-b", "feature/7001_backend")
+        commit(repo, "app/models/record.rb", "2026-09-05T09:00:00Z")
+        commit(repo, "app/services/merger.rb", "2026-09-05T09:20:00Z")
+        git(repo, "checkout", "-q", "-b", "feature/7001_frontend")
+        commit(repo, "web/src/recordList.tsx", "2026-09-05T09:40:00Z")
+        commits, bases = attribute.ticket_commits(repo, ["feature/7001_backend", "feature/7001_frontend"])
+    check("each commit once, oldest first", files_of(commits),
+          ["app/models/record.rb", "app/services/merger.rb", "web/src/recordList.tsx"])
+    check("both measured against develop", bases,
+          {"feature/7001_backend": "develop", "feature/7001_frontend": "develop"})
+
+
+# A branch cut from a release branch, not develop. Against develop, the
+# release branch's own commits read as this ticket's work.
+def test_explicit_base_overrides_the_search():
+    with tempfile.TemporaryDirectory() as root:
+        repo = repo_with_develop(root)
+        git(repo, "checkout", "-q", "-b", "release/2.4")
+        commit(repo, "config/release.yml", "2026-09-01T09:00:00Z")
+        git(repo, "checkout", "-q", "-b", "feature/7001_hotfix")
+        commit(repo, "app/services/merger.rb", "2026-09-05T09:00:00Z")
+        searched, _ = attribute.ticket_commits(repo, ["feature/7001_hotfix"])
+        explicit, bases = attribute.ticket_commits(repo, ["feature/7001_hotfix"], base="release/2.4")
+    check("develop reaches the release commits", files_of(searched), ["config/release.yml", "app/services/merger.rb"])
+    check("--base keeps only the ticket's", files_of(explicit), ["app/services/merger.rb"])
+    check("base reported", bases, {"feature/7001_hotfix": "release/2.4"})
+
+
+def test_unknown_base_says_so():
+    with tempfile.TemporaryDirectory() as root:
+        repo = repo_with_develop(root)
+        try:
+            attribute.find_base(repo, "develop", base="release/9.9")
+            check("raises", False, True)
+        except RuntimeError as e:
+            check("names the base", "release/9.9" in str(e), True)
+
+
 def fake_rmine(cmd, **kwargs):
     if cmd[0] != "rmine":
         return REAL_RUN(cmd, **kwargs)
@@ -147,13 +209,54 @@ def test_end_to_end():
         result = json.load(open(out_path))
 
     check("ticket from the estimate", result["ticket"], 7001)
-    check("branch found by ticket", result["git"]["branch"], "feature/7001_pcb")
+    check("branch found by ticket", result["git"]["branches"], ["feature/7001_pcb"])
+    check("measured against develop", result["git"]["bases"], {"feature/7001_pcb": "develop"})
     check("leave is not work", result["logged"]["by_activity"], {"Design": 2.0, "Development": 4.0})
     proposed = [i["proposed"] for i in result["items"]]
     check("development hours fully split", sum(proposed) + sum(u["proposed"] for u in result["git"]["unmatched"]), 4.0)
     check("assigned file counts toward its item", proposed[1] > 0, True)
     check("nothing left unmatched", result["git"]["unmatched"], [])
     check("non-code sections get nothing from git", proposed[3:], [0.0, 0.0])
+
+
+def run_main(argv):
+    with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=False) as out:
+        path = out.name
+    subprocess.run = fake_rmine
+    try:
+        with open(path, "w") as out:
+            stdout, sys.stdout = sys.stdout, out
+            try:
+                attribute.main(argv)
+            finally:
+                sys.stdout = stdout
+        return json.load(open(path))
+    finally:
+        subprocess.run = REAL_RUN
+        os.unlink(path)
+
+
+def test_end_to_end_with_two_branches_and_a_base():
+    with tempfile.TemporaryDirectory() as root:
+        repo = repo_with_develop(root)
+        git(repo, "checkout", "-q", "-b", "release/2.4")
+        commit(repo, "config/release.yml", "2026-09-01T09:00:00Z")
+        git(repo, "checkout", "-q", "-b", "feature/7001_backend")
+        commit(repo, "app/services/cdw/mappers/uk_record_mapper.rb", "2026-09-05T09:00:00Z")
+        git(repo, "checkout", "-q", "release/2.4")
+        git(repo, "checkout", "-q", "-b", "feature/7001_frontend")
+        commit(repo, "spec/services/cdw/pcb_record_merger_spec.rb", "2026-09-05T09:30:00Z")
+        estimate = os.path.join(root, "estimate-7001.md")
+        with open(estimate, "w") as f:
+            f.write(ESTIMATE)
+        result = run_main(["--estimate", estimate, "--repo", repo, "--json", "--base", "release/2.4",
+                           "--branch", "feature/7001_backend", "--branch", "feature/7001_frontend"])
+    check("both branches", result["git"]["branches"], ["feature/7001_backend", "feature/7001_frontend"])
+    check("one commit from each, none from the release", result["git"]["commits"], 2)
+    proposed = [i["proposed"] for i in result["items"]]
+    check("mapper line got backend time", proposed[0] > 0, True)
+    check("spec line got frontend-branch time", proposed[2] > 0, True)
+    check("development hours fully split", sum(proposed), 4.0)
 
 
 def main():

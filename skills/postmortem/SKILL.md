@@ -51,11 +51,18 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/postmortem/scripts/attribute.py" \
   --estimate estimates/estimate-<id>.md --repo <product repo> --json
 ```
 
+It finds the one local branch that names the ticket. When the work is split
+across branches, a backend and a frontend one for example, pass `--branch`
+once for each; a commit two of them share counts once. Each branch is measured
+from where it left develop, main or master; when it was cut from something
+else, such as a release branch, pass that as `--base`, or that branch's own
+commits read as this ticket's work.
+
 The script:
 
 - parses the estimate's priced leaf lines, each with its section and any
   `Anchor:` row under it;
-- takes the ticket branch's own commits (first-parent, merges excluded), keeps
+- takes each ticket branch's own commits (first-parent, merges excluded), keeps
   those by the people who logged time on the ticket and made after the
   estimate's `Date:`, and reports how many others it dropped;
 - matches each changed file to the lines that name it (`Cdw::Mappers::UkRecordMapper`
@@ -135,7 +142,7 @@ Anchor rows (<mode> column):
 
 Scope not in the estimate: <files or work, with hours>
 
-Method: <N> commits on <branch> since <date> by <authors>; <M> dropped.
+Method: <N> commits on <branch> (against <base>)[, <branch> ...] since <date> by <authors>; <M> dropped.
 Assigned by the developer: <file → line>.
 ```
 
