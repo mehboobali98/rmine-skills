@@ -23,7 +23,7 @@ instructions rather than being briefed by the caller:
 | Agent | Role |
 |---|---|
 | `spec-auditor` | Judges whether the spec can be estimated. Blocks only on gaps that move the hours, and never produces hours itself. |
-| `effort-estimator` | Greps the product repo, then prices each line item against the real services and tables it found. |
+| `effort-estimator` | Prices the change plan, one line item per entry, against the real services and tables it found in every repo the plan names. |
 | `estimate-validator` | Reviews the finished estimate without seeing how it was derived, so it isn't anchored to the estimator's reasoning. |
 
 None of the three can write or edit files.
@@ -96,6 +96,13 @@ format, never pricing.
 Run `/estimate <issue>` **from inside the repo the work will land in** — the
 estimator greps for the real services and tables a change touches before pricing
 anything, which is most of the difference between an estimate and a guess.
+
+Between the auditor and the estimator, `/estimate` answers the items the spec
+leaves to the developer ("dev to confirm", "TBA") from code, with a `file:line`
+or as `unverified` with the test that would settle it. It reads every repo the
+work lands in, cloning a fork or sibling app read-only if it isn't checked out.
+Then it writes a change plan, one entry per spec item, to a scratch directory.
+The estimator prices that plan and the validator checks every entry got a line.
 
 Every estimate carries who produced it, when, and a `Confidence` grade with the
 reason next to it — graded on how much of the number came from the rubric's

@@ -69,9 +69,10 @@ no rubric, no codebase paths, no mention of estimating. Its definition carries
 the checklist and the blocking bar. Don't restate them, and don't add anything
 that primes it to size the work.
 
-It returns `READY` or `INCOMPLETE`, blocking gaps, non-blocking gaps, and
-`WORTH ASKING` items as `Q:`/`A:` pairs — each question already carrying the
-answer the auditor would assume.
+It returns `READY` or `INCOMPLETE`, blocking gaps, non-blocking gaps,
+`WORTH ASKING` items as `Q:`/`A:` pairs, each question already carrying the
+answer the auditor would assume, and the `OPEN ITEMS` the spec leaves to the
+developer.
 
 **If it comes back `READY` with nothing worth asking, stop and say so.** A spec
 that can be estimated does not need an interview, and manufacturing questions to
@@ -87,6 +88,8 @@ command is a slower way of guessing.
 - **Code can settle it** → settle it by reading code. Whether an existing
   service or pattern covers the work is the archetype here, and it is a grep,
   not a question. Never spend a human's attention on something the repo answers.
+  Most `OPEN ITEMS` land here. Read the repo that owns the behaviour, which may
+  be a fork or sibling app rather than this one.
 - **The person running this can settle it** → ask now, in step 4.
 - **Only the requester can settle it** → it goes in the ticket comment. Scope
   boundaries, business rules, which customer asked and what they actually

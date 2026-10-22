@@ -4,6 +4,36 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.12.0
+
+### Fixed
+
+- **`/estimate` priced the spec's open items without answering them, and
+  never read a second repo.** ([#17](https://github.com/mehboobali98/rmine-skills/issues/17))
+  Items a spec leaves to the developer ("dev to confirm", "TBA") passed the
+  auditor as gaps and reached the estimator unanswered. The estimator read
+  only the repo it ran in, so work in a fork or sibling app was priced as a
+  black box. One line was priced as a feasibility risk for a command that
+  already existed in the fork, and one design came from a comment in the main
+  repo instead of the code it described. Both came out too high.
+
+  A new step 3, **Feasibility and plan**, runs between the auditor and the
+  estimator. It lists the open items and every repo the work lands in,
+  cloning a repo read-only into the scratch directory when it isn't checked
+  out. It answers each item with a `file:line`, or marks it `unverified` with
+  the test that would settle it. Then it writes `plan.md` next to the spec:
+  one entry per spec item, with the files touched, the approach and the
+  pattern it follows. Later steps are renumbered.
+
+  `spec-auditor` lists the open items as their own `OPEN ITEMS` group, so the
+  step has a checklist. `effort-estimator` prices one line item per plan
+  entry, cites the plan's answers in sub-details, and searches every repo the
+  plan names. `estimate-validator` takes the plan's path with the spec and the
+  estimate. A priced line with no plan entry, a plan entry with no line, and
+  an `unverified` answer a line depends on that is in neither the `Range:`
+  nor `Discussions` are all findings. The format examples show the plan
+  citations. The estimate format and `check_format.py` are unchanged.
+
 ## 0.11.0
 
 ### Added
