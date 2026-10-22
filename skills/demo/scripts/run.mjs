@@ -113,12 +113,10 @@ async function setCaption(page, state, text, tag) {
 }
 
 async function runScene(page, scene, ctx, stopAfter) {
-  const { base, filmed, state, tag } = ctx;
-  state.caption = scene.caption;
-  state.tag = tag;
+  const { base, filmed, state } = ctx;
   if (scene.start !== undefined) await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
   await guardSignedIn(page);
-  await setCaption(page, state, scene.caption, tag);
+  await setCaption(page, state, scene.caption, ctx.ready());
   if (filmed) await page.waitForTimeout(PACE.lead);
   const steps = stopAfter === undefined ? scene.steps || [] : (scene.steps || []).slice(0, stopAfter);
   for (const [i, step] of steps.entries()) {
@@ -185,7 +183,7 @@ async function main() {
 
   const filmed = args.mode === 'record';
   const videoDir = path.join(args.outDir, '.video');
-  const state = { caption: '', pointer: null, pointerHidden: args.mode === 'screenshots' };
+  const state = { caption: '', pointer: null, pointerHidden: args.mode === 'screenshots', hide: script.hide || [] };
   const browser = await chromium.launch();
   const context = await browser.newContext({
     viewport: script.viewport,
@@ -208,10 +206,12 @@ async function main() {
     const n = i + 1;
     const last = n === scenes[scenes.length - 1][0] + 1;
     const stopAfter = last ? args.steps : undefined;
-    try {
+    const ready = () => {
       marks.push(Date.now());
-      const tag = sceneTag(n, script.scenes.length, args.mode === 'screenshots' ? null : (marks[marks.length - 1] - marks[0]) / 1000);
-      await runScene(page, scene, { base, filmed, state, tag }, stopAfter);
+      return sceneTag(n, script.scenes.length, args.mode === 'screenshots' ? null : elapsedSeconds(marks));
+    };
+    try {
+      await runScene(page, scene, { base, filmed, state, ready }, stopAfter);
       marks.push(Date.now());
       if (stopAfter !== undefined) {
         process.stdout.write(`STOPPED ${n} ${scene.caption} after step ${args.steps}\n`);
@@ -262,6 +262,12 @@ async function main() {
   return failed ? failed.code : 0;
 }
 
+function elapsedSeconds(marks) {
+  let ms = 0;
+  for (let i = 0; i + 1 < marks.length - 1; i += 2) ms += marks[i + 1] - marks[i];
+  return ms / 1000;
+}
+
 function sceneTag(n, total, seconds) {
   const count = `${n}/${total}`;
   return seconds === null ? count : `${count} · ${formatTime(Math.round(seconds * 100) / 100)}`;
@@ -278,7 +284,7 @@ function writeChapters(outDir, script, times) {
   const chapters = script.scenes.map((scene, i) => ({
     scene: i + 1,
     caption: scene.caption,
-    tag: sceneTag(i + 1, script.scenes.length, times ? times[i * 2] - times[0] : null),
+    tag: sceneTag(i + 1, script.scenes.length, times ? elapsedSeconds(times.slice(0, i * 2 + 1).map((t) => t * 1000)) : null),
     criterion: scene.criterion || '',
     start: times ? times[i * 2] : null,
     end: times ? times[i * 2 + 1] : null,

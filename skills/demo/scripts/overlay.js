@@ -45,6 +45,14 @@
       'z-index:2147483647', 'pointer-events:none', 'display:none', 'transition:background .15s',
     ].join(';');
     document.documentElement.append(bar, ring);
+    if (window.__demoState) {
+      window.__demoState().then((state) => {
+        if (!state.hide.length) return;
+        const style = document.createElement('style');
+        style.textContent = `${state.hide.join(',')}{display:none !important}`;
+        document.documentElement.append(style);
+      });
+    }
     document.addEventListener('mousemove', (e) => api.pointer(e.clientX, e.clientY), true);
     document.addEventListener('mousedown', () => {
       ring.style.background = 'rgba(239,68,68,.35)';

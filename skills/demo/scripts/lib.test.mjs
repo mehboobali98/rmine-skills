@@ -146,6 +146,7 @@ test('validateScript names each problem', () => {
     [withScene((sc) => { sc.steps.push({ drag: { css: '#a' } }); }), /scene 1 step 4: drag needs a to locator/],
     [withScene((sc) => { sc.steps.push({ click: { text: 'a', exact: 'yes' } }); }), /scene 1 step 4: exact is true or false/],
     [withScene((_, s) => { s.omitted = [{ criterion: 'x' }]; }), /omitted 1: criterion and reason/],
+    [withScene((_, s) => { s.hide = '#profiler'; }), /hide is a list of CSS selectors/],
   ];
   for (const [script, pattern] of cases) {
     const errors = validateScript(script);

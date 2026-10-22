@@ -23,25 +23,32 @@ function parseArgs(argv) {
 
 const ffmpeg = (args) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...args]);
 
-function encode(raw, from, to, out, rate, meta) {
+function joinSegments(segments) {
+  const trims = segments.map((s, i) => `[0:v]trim=start=${s.start}:end=${s.end},setpts=PTS-STARTPTS[s${i}]`);
+  const inputs = segments.map((_, i) => `[s${i}]`).join('');
+  return `${trims.join(';')};${inputs}concat=n=${segments.length}:v=1:a=0[out]`;
+}
+
+function encode(raw, segments, out, rate, meta) {
   const quality = rate
     ? ['-b:v', `${rate}k`, '-maxrate', `${rate}k`, '-bufsize', `${rate * 2}k`]
     : ['-crf', String(CRF)];
-  ffmpeg(['-ss', String(from), '-to', String(to), '-i', raw, '-i', meta, '-map', '0:v', '-map_chapters', '1',
+  ffmpeg(['-i', raw, '-i', meta, '-filter_complex', joinSegments(segments), '-map', '[out]', '-map_chapters', '1',
     '-c:v', 'libx264', '-preset', 'medium', ...quality,
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out]);
   return fs.statSync(out).size;
 }
 
-function encodeToFit(raw, from, to, out, opts, meta) {
-  if (encode(raw, from, to, out, null, meta) <= opts.limitBytes) return null;
-  const plan = planEncode({ durationSec: to - from, limitBytes: opts.limitBytes });
+function encodeToFit(raw, segments, out, opts, meta) {
+  if (encode(raw, segments, out, null, meta) <= opts.limitBytes) return null;
+  const durationSec = segments.reduce((sum, s) => sum + s.end - s.start, 0);
+  const plan = planEncode({ durationSec, limitBytes: opts.limitBytes });
   if (plan.tooBig) {
     fs.rmSync(out, { force: true });
-    return `${Math.round(to - from)} s of video needs at least ${plan.neededKbps} kbps to stay readable, which does not fit ${opts.limitMb} MB.`;
+    return `${Math.round(durationSec)} s of video needs at least ${plan.neededKbps} kbps to stay readable, which does not fit ${opts.limitMb} MB.`;
   }
   for (const rate of [plan.bitrateKbps, Math.floor(plan.bitrateKbps * RETRY_FACTOR)]) {
-    if (encode(raw, from, to, out, rate, meta) <= opts.limitBytes) {
+    if (encode(raw, segments, out, rate, meta) <= opts.limitBytes) {
       process.stdout.write(`Re-encoded at ${rate} kbps to fit ${opts.limitMb} MB\n`);
       return null;
     }
@@ -83,16 +90,16 @@ function assembleVideo(opts, chapters) {
   const files = [];
   const shifted = [];
   for (const [i, group] of groups.entries()) {
-    const from = group[0].start;
-    const to = group[group.length - 1].end;
     const file = path.join(opts.outDir, opts.parts === 2 ? `demo-${i + 1}.mp4` : 'demo.mp4');
-    const shift = (t) => Math.round((t - from) * 100) / 100;
-    const groupChapters = group.map((c) => ({
-      ...c, start: shift(c.start), end: shift(c.end), ...(opts.parts === 2 ? { part: i + 1 } : {}),
-    }));
+    let elapsed = 0;
+    const groupChapters = group.map((c) => {
+      const start = Math.round(elapsed * 100) / 100;
+      elapsed += c.end - c.start;
+      return { ...c, start, end: Math.round(elapsed * 100) / 100, ...(opts.parts === 2 ? { part: i + 1 } : {}) };
+    });
     const meta = path.join(opts.outDir, `.chapters-${i + 1}.txt`);
     fs.writeFileSync(meta, ffmetadata(groupChapters));
-    const problem = encodeToFit(raw, from, to, file, opts, meta);
+    const problem = encodeToFit(raw, group, file, opts, meta);
     fs.rmSync(meta);
     if (problem) {
       files.forEach((f) => fs.rmSync(f, { force: true }));
