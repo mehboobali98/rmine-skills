@@ -94,17 +94,22 @@ test('validateScript accepts the documented sample', () => {
   assert.deepEqual(validateScript(SCRIPT), []);
 });
 
+test('validateScript accepts a drag step', () => {
+  assert.deepEqual(validateScript(withScene((sc) => { sc.steps.push({ drag: { text: 'Card' }, to: { text: 'Drop zone' } }); })), []);
+});
+
 test('validateScript names each problem', () => {
   const cases = [
     [withScene((_, s) => { s.scenes = []; }), /no scenes/],
     [withScene((_, s) => { s.mode = 'gif'; }), /mode/],
     [withScene((sc) => { sc.steps[0] = { click: { role: 'button', text: 'x' } }; }), /scene 1 step 1: .*one of/],
-    [withScene((sc) => { sc.steps.push({ drag: { css: 'a' } }); }), /scene 1 step 4: unknown step/],
+    [withScene((sc) => { sc.steps.push({ scroll: { css: 'a' } }); }), /scene 1 step 4: unknown step/],
     [withScene((sc) => { delete sc.caption; }), /scene 1: caption/],
     [withScene((sc) => { sc.expect = []; }), /scene 1: expect/],
     [withScene((sc) => { sc.steps[1] = { fill: { label: 'Status' } }; }), /scene 1 step 2: .*value/],
     [withScene((sc) => { sc.expect.push({ glows: 'x' }); }), /scene 1 expect 3: unknown/],
     [withScene((sc) => { sc.start = 'https://elsewhere.example/'; }), /scene 1: start/],
+    [withScene((sc) => { sc.steps.push({ drag: { css: '#a' } }); }), /scene 1 step 4: drag needs a to locator/],
   ];
   for (const [script, pattern] of cases) {
     const errors = validateScript(script);

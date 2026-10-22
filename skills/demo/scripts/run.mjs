@@ -48,9 +48,25 @@ async function glide(page, state, x, y) {
   state.pointer = [x, y];
 }
 
+async function centre(locator) {
+  await locator.waitFor({ state: 'visible', timeout: TIMEOUT_MS });
+  const box = await locator.boundingBox();
+  return [box.x + box.width / 2, box.y + box.height / 2];
+}
+
+async function drag(page, source, target, { filmed, state }) {
+  const [fromX, fromY] = await centre(source);
+  if (!filmed) await page.mouse.move(fromX, fromY);
+  await page.mouse.down();
+  const [toX, toY] = await centre(target);
+  if (filmed) await glide(page, state, toX, toY);
+  else await page.mouse.move(toX, toY, { steps: 10 });
+  await page.mouse.up();
+}
+
 async function runStep(page, step, ctx) {
   const { base, filmed, state } = ctx;
-  const [verb] = Object.keys(step).filter((k) => k !== 'value');
+  const [verb] = Object.keys(step).filter((k) => k !== 'value' && k !== 'to');
   if (verb === 'goto') return page.goto(base + step.goto, { waitUntil: 'domcontentloaded' });
   if (verb === 'wait') return page.waitForTimeout(step.wait);
   if (verb === 'press') return page.keyboard.press(step.press);
@@ -62,6 +78,7 @@ async function runStep(page, step, ctx) {
     const box = await target.boundingBox();
     await glide(page, state, box.x + box.width / 2, box.y + box.height / 2);
   }
+  if (verb === 'drag') return drag(page, target, locate(page, step.to), ctx);
   if (verb === 'click') return target.click({ timeout: TIMEOUT_MS });
   if (verb === 'hover') return target.hover({ timeout: TIMEOUT_MS });
   if (verb === 'select') return target.selectOption(step.value, { timeout: TIMEOUT_MS });
