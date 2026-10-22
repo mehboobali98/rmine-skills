@@ -22,7 +22,7 @@ function fail(code, message) {
 
 async function open(page, url) {
   try {
-    await page.goto(url, { waitUntil: 'load', timeout: 15000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   } catch (err) {
     fail(3, `The app is not reachable at ${url}. Start it and run again. (${err.message.split('\n')[0]})`);
   }

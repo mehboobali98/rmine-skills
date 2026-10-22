@@ -30,6 +30,10 @@ export async function startFixture() {
   const server = http.createServer((req, res) => {
     const signedIn = (req.headers.cookie || '').includes(`sid=${VALID_COOKIE}`);
     const route = req.url.split('?')[0];
+    if (route === '/slow-asset') {
+      setTimeout(() => res.end(), 20000);
+      return;
+    }
     if (route === '/login') {
       if (req.method === 'POST') {
         res.writeHead(302, { 'set-cookie': `sid=${VALID_COOKIE}; Path=/`, location: '/items' });
@@ -49,12 +53,19 @@ export async function startFixture() {
       res.end();
       return;
     }
+    const slow = req.url.includes('slow=1') ? '<img src="/slow-asset">' : '';
     res.writeHead(PAGES[route] ? 200 : 404, { 'content-type': 'text/html' });
-    res.end(html(PAGES[route] || '<h1>Not found</h1>'));
+    res.end(html((PAGES[route] || '<h1>Not found</h1>') + slow));
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
-  return { url, close: () => new Promise((resolve) => server.close(resolve)) };
+  return {
+    url,
+    close: () => new Promise((resolve) => {
+      server.close(resolve);
+      server.closeAllConnections();
+    }),
+  };
 }
 
 export function sessionWithCookie(value) {

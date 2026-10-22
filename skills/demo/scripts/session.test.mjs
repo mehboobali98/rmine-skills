@@ -54,6 +54,14 @@ test('check exits 0 with a working session', async () => {
   } finally { await app.close(); }
 });
 
+test('check does not wait for slow assets', async () => {
+  const app = await startFixture();
+  try {
+    const r = await check(stateDirFor(`${app.url}/items?slow=1`, sessionWithCookie(VALID_COOKIE)));
+    assert.equal(r.status, 0, r.stderr);
+  } finally { await app.close(); }
+});
+
 test('check exits 4 with no settings', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'demo-state-'));
   assert.equal((await check(dir)).status, 4);
