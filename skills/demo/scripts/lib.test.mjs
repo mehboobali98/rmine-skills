@@ -94,6 +94,10 @@ test('validateScript accepts the documented sample', () => {
   assert.deepEqual(validateScript(SCRIPT), []);
 });
 
+test('validateScript accepts exact matching', () => {
+  assert.deepEqual(validateScript(withScene((sc) => { sc.steps.push({ click: { role: 'option', name: '1U', exact: true } }); })), []);
+});
+
 test('validateScript accepts a drag step', () => {
   assert.deepEqual(validateScript(withScene((sc) => { sc.steps.push({ drag: { text: 'Card' }, to: { text: 'Drop zone' } }); })), []);
 });
@@ -110,6 +114,7 @@ test('validateScript names each problem', () => {
     [withScene((sc) => { sc.expect.push({ glows: 'x' }); }), /scene 1 expect 3: unknown/],
     [withScene((sc) => { sc.start = 'https://elsewhere.example/'; }), /scene 1: start/],
     [withScene((sc) => { sc.steps.push({ drag: { css: '#a' } }); }), /scene 1 step 4: drag needs a to locator/],
+    [withScene((sc) => { sc.steps.push({ click: { text: 'a', exact: 'yes' } }); }), /scene 1 step 4: exact is true or false/],
   ];
   for (const [script, pattern] of cases) {
     const errors = validateScript(script);
