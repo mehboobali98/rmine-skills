@@ -73,6 +73,14 @@ test('running twice gives the same chapters', async () => {
   assert.deepEqual(JSON.parse(read(dir, 'chapters.json')), TWO_SCENES);
 });
 
+test('the comment lists what the demo leaves out', async () => {
+  const dir = videoDir(12, TWO_SCENES);
+  fs.writeFileSync(path.join(dir, 'omitted.json'), JSON.stringify([{ criterion: 'Preview cards', reason: 'no search index' }]));
+  const r = await assemble(dir, ['--limit-mb', '5']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(read(dir, 'comment.md'), /\n\nNot shown: Preview cards \(no search index\)\.\n\n/);
+});
+
 test('a dirty tree is named in the comment', async () => {
   const dir = videoDir(12, TWO_SCENES);
   const r = await assemble(dir, ['--limit-mb', '5', '--dirty']);

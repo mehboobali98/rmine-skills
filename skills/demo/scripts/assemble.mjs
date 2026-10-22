@@ -130,9 +130,11 @@ function main() {
     fs.writeFileSync(path.join(opts.outDir, 'demo-chapters.json'), `${JSON.stringify(chapters, null, 2)}\n`);
   }
 
+  const omittedFile = path.join(opts.outDir, 'omitted.json');
+  const omitted = fs.existsSync(omittedFile) ? JSON.parse(fs.readFileSync(omittedFile, 'utf8')) : [];
   const comment = path.join(opts.outDir, 'comment.md');
   fs.writeFileSync(comment, renderComment({
-    subject: opts.subject, branch: opts.branch, sha: opts.sha, dirty: opts.dirty, chapters,
+    subject: opts.subject, branch: opts.branch, sha: opts.sha, dirty: opts.dirty, chapters, omitted,
   }));
   process.stdout.write(`comment: ${comment}\n${files.map((f) => `attach: ${f}`).join('\n')}\n`);
   return 0;

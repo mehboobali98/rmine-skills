@@ -7,7 +7,7 @@ import { validateScript, videoTimes, isPasswordVisible } from './lib.mjs';
 
 const TIMEOUT_MS = 5000;
 const PACE = { warmUp: 500, lead: 1000, move: 600, after: 700, hold: 1500, typeDelay: 60 };
-const OUTPUTS = /^(raw\.webm|chapters\.json|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
+const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
 
 class SceneFailure extends Error {
   constructor(code, message) {
@@ -267,6 +267,7 @@ function writeChapters(outDir, script, times) {
     expect: scene.expect,
   }));
   fs.writeFileSync(path.join(outDir, 'chapters.json'), `${JSON.stringify(chapters, null, 2)}\n`);
+  if (script.omitted?.length) fs.writeFileSync(path.join(outDir, 'omitted.json'), `${JSON.stringify(script.omitted, null, 2)}\n`);
 }
 
 process.exitCode = await main();

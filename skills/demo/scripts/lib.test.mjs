@@ -57,6 +57,15 @@ test('renderComment marks a dirty tree', () => {
   );
 });
 
+test('renderComment names what the demo leaves out', () => {
+  const body = renderComment({
+    subject: 's', branch: 'b', sha: 'abc1234', dirty: false,
+    chapters: [{ start: 0, caption: 'One' }],
+    omitted: [{ criterion: 'Preview cards', reason: 'the search index was not running' }],
+  });
+  assert.match(body, /\n0:00 One\n\nNot shown: Preview cards \(the search index was not running\)\.\n\nReply/);
+});
+
 test('renderComment screenshots mode numbers the scenes', () => {
   const body = renderComment({
     subject: 's', branch: 'b', sha: 'abc1234', dirty: false,
@@ -120,6 +129,7 @@ test('validateScript names each problem', () => {
     [withScene((sc) => { sc.start = 'https://elsewhere.example/'; }), /scene 1: start/],
     [withScene((sc) => { sc.steps.push({ drag: { css: '#a' } }); }), /scene 1 step 4: drag needs a to locator/],
     [withScene((sc) => { sc.steps.push({ click: { text: 'a', exact: 'yes' } }); }), /scene 1 step 4: exact is true or false/],
+    [withScene((_, s) => { s.omitted = [{ criterion: 'x' }]; }), /omitted 1: criterion and reason/],
   ];
   for (const [script, pattern] of cases) {
     const errors = validateScript(script);
