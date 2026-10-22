@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatTime, renderComment, planEncode, videoTimes, validateScript,
+  formatTime, renderComment, planEncode, videoTimes, validateScript, sheetTime,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -88,6 +88,11 @@ test('planEncode refuses below the floor', () => {
 test('videoTimes counts back from the end', () => {
   assert.deepEqual(videoTimes({ marks: [4000, 6000], closeMs: 9000, durationSec: 7 }), [2, 4]);
   assert.throws(() => videoTimes({ marks: [1000, 4000], closeMs: 9000, durationSec: 6 }), /started late/);
+});
+
+test('sheetTime shows the end of a scene, where its check passed', () => {
+  assert.equal(sheetTime({ start: 10, end: 30 }), 29.25);
+  assert.equal(sheetTime({ start: 10, end: 10.5 }), 10.25);
 });
 
 test('validateScript accepts the documented sample', () => {

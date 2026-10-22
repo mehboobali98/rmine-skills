@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { planEncode, renderComment } from './lib.mjs';
+import { planEncode, renderComment, sheetTime } from './lib.mjs';
 
 const MB = 1024 * 1024;
 const CRF = 28;
@@ -62,7 +62,7 @@ function splitPoint(chapters) {
 function contactSheet(raw, chapters, outDir) {
   const frames = chapters.map((c, i) => {
     const file = path.join(outDir, `.sheet-${String(i + 1).padStart(2, '0')}.png`);
-    ffmpeg(['-ss', String((c.start + c.end) / 2), '-i', raw, '-frames:v', '1', '-vf', 'scale=640:-2', file]);
+    ffmpeg(['-ss', String(sheetTime(c)), '-i', raw, '-frames:v', '1', '-vf', 'scale=640:-2', file]);
     return file;
   });
   const cols = Math.min(3, frames.length);
