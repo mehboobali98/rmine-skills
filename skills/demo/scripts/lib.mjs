@@ -1,4 +1,3 @@
-// Pure helpers shared by session.mjs, run.mjs and assemble.mjs. No browser, no ffmpeg.
 import path from 'node:path';
 
 const LOCATOR_KEYS = ['role', 'label', 'text', 'placeholder', 'testId', 'css'];
@@ -10,8 +9,7 @@ const FLOOR_KBPS = 150;
 export const REPLY_LINE = "Reply with a time and what's wrong, and I'll pick it up before QA.";
 
 /**
- * Seconds as m:ss, or h:mm:ss from an hour. Fractions are dropped, so a
- * chapter never points past the moment it names.
+ * Seconds as m:ss, or h:mm:ss from an hour, rounded down.
  * @param {number} seconds
  * @returns {string}
  */
@@ -24,9 +22,7 @@ export function formatTime(seconds) {
 }
 
 /**
- * The Redmine comment. Plain lines, so it reads the same in Markdown and Textile.
- * A chapter with a null start is a screenshot and gets a number instead of a time.
- * Chapters carrying a part number are grouped under "Part N" lines.
+ * The Redmine comment body. A null start numbers the line instead of timing it.
  * @param {{subject: string, branch: string, sha: string, dirty: boolean,
  *   chapters: {start: number|null, caption: string, part?: number}[]}} demo
  * @returns {string}
@@ -43,8 +39,7 @@ export function renderComment({ subject, branch, sha, dirty, chapters }) {
 }
 
 /**
- * The bitrate that fits a video into the attachment limit, with 10% headroom
- * for the container. Below 150 kbps screen text stops being worth watching.
+ * The bitrate that fits the attachment limit with 10% headroom, or tooBig below 150 kbps.
  * @param {{durationSec: number, limitBytes: number}} input
  * @returns {{bitrateKbps: number} | {tooBig: true, neededKbps: number}}
  */
@@ -54,9 +49,7 @@ export function planEncode({ durationSec, limitBytes }) {
 }
 
 /**
- * Where each wall-clock mark falls in the recorded video. Playwright can drop
- * frames at the start of a recording but not later, so times are counted back
- * from the end, which is when the context closed.
+ * Each wall-clock mark's time in the video, counted back from the context close.
  * @param {{marks: number[], closeMs: number, durationSec: number}} input
  * @returns {number[]} seconds from the start of the video
  */
@@ -103,7 +96,7 @@ function expectError(item) {
 }
 
 /**
- * Every problem with a scene script, one message each. Empty means valid.
+ * Every problem with a scene script. Empty means valid.
  * @param {object} script
  * @returns {string[]}
  */
@@ -137,8 +130,7 @@ export function validateScript(script) {
 }
 
 /**
- * The per-user directory for one product repo. Every worktree of a repo
- * shares it, because they share the git common dir.
+ * The per-user directory for one product repo, shared by all its worktrees.
  * @param {{env: object, home: string, gitCommonDir: string}} input
  * @returns {string}
  */
@@ -146,4 +138,12 @@ export function stateDir({ env, home, gitCommonDir }) {
   const base = env.XDG_STATE_HOME || path.join(home, '.local', 'state');
   const repo = path.basename(path.dirname(path.resolve(gitCommonDir)));
   return path.join(base, 'rmine-skills', 'demo', repo);
+}
+
+/**
+ * True when the page shows a password field: the generic sign of a sign-in page.
+ * @param {import('playwright').Page} page
+ */
+export async function isPasswordVisible(page) {
+  return (await page.locator('input[type=password]').filter({ visible: true }).count()) > 0;
 }
