@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for check_format.py.
 
-The checker gates step 5 of /estimate and the validator agent reports its
+The checker gates step 6 of /estimate and the validator agent reports its
 output verbatim, so a checker that silently stops catching things is worse
 than no checker. Run with: python3 test_check_format.py
 

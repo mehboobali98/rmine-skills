@@ -4,7 +4,7 @@ Two worked estimates showing the house format. **The numbers are invented** —
 they are here to demonstrate structure and specificity, not to calibrate
 anything. Calibration lives in the anchor table in `rubric.md`.
 
-Read these for five things:
+Read these for six things:
 
 - **Shape.** The required header lines, where `Assumptions:` sits,
   `Total (...)` as the literal last line, `N/A` for a layer that was considered
@@ -24,6 +24,10 @@ Read these for five things:
 - **Specificity.** Every line item names a real thing — a service, a table, a
   generator. `Export service following the existing CSV exporter pattern` is a
   line item; `Update the service` is a guess with a number attached.
+- **Plan citations.** Every development line's first sub-detail names the
+  plan entry it prices (`Plan 1.`), and a line that rests on an open item cites
+  the plan's answer. The first entry's background job depends on an
+  `unverified` answer, so `Assumptions:` names it as the top of the range.
 - **Unpriced line items.** `2.b` in the second entry carries no hours. It
   describes what the section covers rather than claiming a slice of it, and its
   priced siblings still sum to the section — so nothing hides behind it.
@@ -57,21 +61,29 @@ to exist, you'll get real time entries for unrelated work.
 **Mode**: agent-driven
 **Range**: 5–9 hrs
 **Assumptions**:
-    The CSV exporter pattern is treated as shipped and reusable. The background
-    job for large exports sets the top of the range: if the agent's first
-    version doesn't batch, it takes extra review rounds.
+    The CSV exporter pattern is treated as shipped and reusable. Open item 2,
+    whether the mail relay accepts a 10 MB attachment, is unverified; one large
+    export on staging settles it. The background job depends on it and sets the
+    top of the range: if the relay refuses, the job sends a download link, which
+    takes extra review rounds.
 **Breakdown**:
     1. Backend (2 hrs)
         a. Export service following the existing CSV exporter pattern (0.75 hr)
-            i. Column selection from the list view preference
-            ii. Background job for exports over 10k rows
+            i. Plan 1. Open item 1: the exporter already streams rows (app/exporters/csv_exporter.rb:42)
+            ii. Column selection from the list view preference
+            iii. Background job for exports over 10k rows, depends on open item 2
         b. Controller action, route, ability (0.5 hr)
+            i. Plan 2.
         c. Serializer changes for the export payload (0.25 hr)
+            i. Plan 3.
         d. Rake task to backfill the export_enabled flag for existing tenants (0.5 hr)
+            i. Plan 4.
     2. Frontend (1 hr)
         a. Export button and format dropdown in the listing toolbar (0.5 hr)
-            i. Redux slice, action mapper, API method
+            i. Plan 5.
+            ii. Redux slice, action mapper, API method
         b. Progress toast for background exports (0.5 hr)
+            i. Plan 6.
     3. Demo + PR Reviews + Testing (3 hrs)
         a. Export flow in the browser: both formats, column selection, a 10k+ row export (1.5 hr)
         b. Careful read of the backfill and ability changes (0.5 hr)
@@ -92,15 +104,21 @@ to exist, you'll get real time entries for unrelated work.
 **Breakdown**:
     1. Backend (7 hrs)
         a. Schema change (0.5 hr)
-            i. New table: widget_events
-            ii. Columns: widget_id, actor_id, event_type, payload
+            i. Plan 1.
+            ii. New table: widget_events
+            iii. Columns: widget_id, actor_id, event_type, payload
         b. Model, associations, validations (0.5 hr)
+            i. Plan 2.
         c. Event recording in the widget update path (2 hr)
-            i. Verify every mutation route is covered, not just the controller
+            i. Plan 3.
+            ii. Verify every mutation route is covered, not just the controller
                 1. WidgetsController, the bulk update path, and the importer
         d. Presenter and serializer for the history tab (1 hr)
+            i. Plan 4.
         e. Filters on the existing pattern (1 hr)
+            i. Plan 5.
         f. Ability and permission checks on the history endpoint (2 hr)
+            i. Plan 6.
     2. Frontend (N/A)
     3. Testing (1 hr)
     4. Demo + PR Reviews (2 hrs)
