@@ -1,0 +1,10 @@
+{
+  "name": "rmine-skills",
+  "private": true,
+  "description": "Node dependencies for /demo. Install with npm install --prefix into the plugin folder.",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "1.61.1"
+  }
+}

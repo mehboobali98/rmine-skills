@@ -1,4 +1,3 @@
-// Tests for lib.mjs. Run with: node --test skills/demo/scripts/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
