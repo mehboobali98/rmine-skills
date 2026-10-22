@@ -127,6 +127,15 @@ test('screenshots writes one image per scene', async () => {
   assert.deepEqual(chapters.map((c) => c.start), [null, null]);
 });
 
+test('--scene is for rehearsal only, and must name a scene', async () => {
+  const recorded = await run('record', SCRIPT, { extra: ['--scene', '1'] });
+  assert.equal(recorded.status, 2);
+  assert.match(recorded.stderr, /rehearse/);
+  const missing = await run('rehearse', SCRIPT, { extra: ['--scene', '3'] });
+  assert.equal(missing.status, 2);
+  assert.match(missing.stderr, /scene 3/);
+});
+
 test('an invalid script exits 2 before opening a browser', async () => {
   const r = await run('record', { ...SCRIPT, scenes: [] });
   assert.equal(r.status, 2);

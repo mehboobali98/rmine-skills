@@ -141,6 +141,10 @@ Write the scenes to `$STATE/<id>/scenes.json`:
 - `start` is a path on the saved URL. Every scene opens its own start page, so
   scenes don't depend on each other.
 
+Any visible password field stops the run, because that is how a sign-in page
+is recognised. A criterion whose own screen has one (a change-password form)
+can't be filmed. Leave it out and say so in the scene list.
+
 A check must prove the criterion, not only that the page loaded. "The saved
 row shows the new status" is a check; "the Save button exists" is not.
 

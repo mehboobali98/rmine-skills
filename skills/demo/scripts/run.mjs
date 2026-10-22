@@ -150,6 +150,14 @@ async function main() {
     process.stderr.write(`The scene script is not valid:\n${errors.map((e) => `- ${e}`).join('\n')}\n`);
     return 2;
   }
+  if ((args.scene !== undefined || args.steps !== undefined) && args.mode !== 'rehearse') {
+    process.stderr.write('--scene and --steps are for rehearse only; record and screenshots run every scene.\n');
+    return 2;
+  }
+  if (args.scene !== undefined && !script.scenes[args.scene - 1]) {
+    process.stderr.write(`There is no scene ${args.scene}; the script has ${script.scenes.length}.\n`);
+    return 2;
+  }
   const settings = JSON.parse(fs.readFileSync(path.join(args.stateDir, 'settings.json'), 'utf8'));
   const base = settings.url.replace(/\/$/, '');
   fs.mkdirSync(args.outDir, { recursive: true });
