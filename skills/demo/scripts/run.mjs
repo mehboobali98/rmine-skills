@@ -3,10 +3,10 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { validateScript, videoTimes, isPasswordVisible } from './lib.mjs';
+import { validateScript, videoTimes, isPasswordVisible, formatTime } from './lib.mjs';
 
 const TIMEOUT_MS = 5000;
-const PACE = { warmUp: 500, lead: 1000, move: 600, after: 700, hold: 1500, typeDelay: 60 };
+const PACE = { warmUp: 500, lead: 1200, move: 1000, drag: 2000, after: 800, hold: 1800, typeDelay: 60 };
 const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
 
 class SceneFailure extends Error {
@@ -37,14 +37,14 @@ function describe(step) {
   return JSON.stringify(step);
 }
 
-async function glide(page, state, x, y) {
+async function glide(page, state, x, y, duration = PACE.move) {
   const [fromX, fromY] = state.pointer || [x, y - 120];
-  const frames = 24;
+  const frames = Math.round(duration / 40);
   for (let i = 1; i <= frames; i += 1) {
     const t = i / frames;
     const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
     await page.mouse.move(fromX + (x - fromX) * ease, fromY + (y - fromY) * ease);
-    await page.waitForTimeout(PACE.move / frames);
+    await page.waitForTimeout(duration / frames);
   }
   state.pointer = [x, y];
 }
@@ -60,7 +60,7 @@ async function drag(page, source, target, { filmed, state }) {
   if (!filmed) await page.mouse.move(fromX, fromY);
   await page.mouse.down();
   const [toX, toY] = await centre(target);
-  if (filmed) await glide(page, state, toX, toY);
+  if (filmed) await glide(page, state, toX, toY, PACE.drag);
   else await page.mouse.move(toX, toY, { steps: 10 });
   await page.mouse.up();
 }
@@ -106,17 +106,19 @@ async function guardSignedIn(page) {
   }
 }
 
-async function setCaption(page, state, text) {
+async function setCaption(page, state, text, tag) {
   state.caption = text;
-  await page.evaluate((t) => window.__demo.caption(t), text);
+  state.tag = tag;
+  await page.evaluate(([t, g]) => window.__demo.caption(t, g), [text, tag]);
 }
 
 async function runScene(page, scene, ctx, stopAfter) {
-  const { base, filmed, state } = ctx;
+  const { base, filmed, state, tag } = ctx;
   state.caption = scene.caption;
-  await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
+  state.tag = tag;
+  if (scene.start !== undefined) await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
   await guardSignedIn(page);
-  await setCaption(page, state, scene.caption);
+  await setCaption(page, state, scene.caption, tag);
   if (filmed) await page.waitForTimeout(PACE.lead);
   const steps = stopAfter === undefined ? scene.steps || [] : (scene.steps || []).slice(0, stopAfter);
   for (const [i, step] of steps.entries()) {
@@ -199,16 +201,19 @@ async function main() {
     await page.waitForTimeout(PACE.warmUp);
   }
 
-  const scenes = args.scene ? [[args.scene - 1, script.scenes[args.scene - 1]]] : [...script.scenes.entries()];
+  const scenes = [...script.scenes.entries()].slice(firstScene(script, args.scene), args.scene || script.scenes.length);
   const marks = [];
   let failed = null;
   for (const [i, scene] of scenes) {
     const n = i + 1;
+    const last = n === scenes[scenes.length - 1][0] + 1;
+    const stopAfter = last ? args.steps : undefined;
     try {
       marks.push(Date.now());
-      await runScene(page, scene, { base, filmed, state }, args.steps);
+      const tag = sceneTag(n, script.scenes.length, args.mode === 'screenshots' ? null : (marks[marks.length - 1] - marks[0]) / 1000);
+      await runScene(page, scene, { base, filmed, state, tag }, stopAfter);
       marks.push(Date.now());
-      if (args.steps !== undefined) {
+      if (stopAfter !== undefined) {
         process.stdout.write(`STOPPED ${n} ${scene.caption} after step ${args.steps}\n`);
       } else if (args.mode === 'screenshots') {
         await page.evaluate(() => window.__demo.hidePointer());
@@ -257,10 +262,23 @@ async function main() {
   return failed ? failed.code : 0;
 }
 
+function sceneTag(n, total, seconds) {
+  const count = `${n}/${total}`;
+  return seconds === null ? count : `${count} · ${formatTime(Math.round(seconds * 100) / 100)}`;
+}
+
+function firstScene(script, scene) {
+  if (!scene) return 0;
+  let first = scene - 1;
+  while (script.scenes[first].start === undefined) first -= 1;
+  return first;
+}
+
 function writeChapters(outDir, script, times) {
   const chapters = script.scenes.map((scene, i) => ({
     scene: i + 1,
     caption: scene.caption,
+    tag: sceneTag(i + 1, script.scenes.length, times ? times[i * 2] - times[0] : null),
     criterion: scene.criterion || '',
     start: times ? times[i * 2] : null,
     end: times ? times[i * 2 + 1] : null,
