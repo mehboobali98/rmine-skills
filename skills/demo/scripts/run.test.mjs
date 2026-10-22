@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { startFixture, sessionWithCookie, VALID_COOKIE } from './fixture-app.mjs';
+import { formatTime } from './lib.mjs';
 
 const RUN = new URL('./run.mjs', import.meta.url).pathname;
 
@@ -116,6 +117,42 @@ test('record stops on a password field', async () => {
   assert.equal(r.status, 4);
   assert.match(r.stderr, /sign/i);
   assert.ok(!exists(r.out, 'raw.webm'));
+});
+
+const CONTINUED = {
+  ...SCRIPT,
+  scenes: [
+    { caption: 'Hide closed items', start: '/items', steps: [{ click: { role: 'button', name: 'Hide closed' } }], expect: [{ text: '8 shown' }] },
+    { caption: 'Then open a new item', steps: [{ click: { role: 'link', name: 'New item' } }], expect: [{ url: '/items/new' }] },
+  ],
+};
+
+test('a scene without a start carries on from the previous one', async () => {
+  const kept = structuredClone(CONTINUED);
+  kept.scenes[1] = { caption: 'The list keeps its filter', expect: [{ text: '8 shown' }] };
+  const r = await run('rehearse', kept);
+  assert.equal(r.status, 0, r.stderr);
+});
+
+test('rehearsing a continued scene runs the scenes it depends on first', async () => {
+  const r = await run('rehearse', CONTINUED, { extra: ['--scene', '2'] });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /^PASS 1 Hide closed items$/m);
+  assert.match(r.stdout, /^PASS 2 Then open a new item$/m);
+});
+
+test('record numbers each caption and shows its chapter time', async () => {
+  const r = await run('record', CONTINUED);
+  assert.equal(r.status, 0, r.stderr);
+  const chapters = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
+  assert.deepEqual(chapters.map((c) => c.tag), ['1/2 · 0:00', `2/2 · ${formatTime(chapters[1].start - chapters[0].start)}`]);
+});
+
+test('screenshots number each caption', async () => {
+  const r = await run('screenshots', { ...CONTINUED, mode: 'screenshots' });
+  assert.equal(r.status, 0, r.stderr);
+  const chapters = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
+  assert.deepEqual(chapters.map((c) => c.tag), ['1/2', '2/2']);
 });
 
 test('record passes the omitted criteria on to assembly', async () => {

@@ -62,6 +62,19 @@ export function videoTimes({ marks, closeMs, durationSec }) {
 }
 
 /**
+ * An ffmpeg FFMETADATA file with one chapter per scene, so players list the chapters.
+ * @param {{start: number, end: number, caption: string}[]} chapters
+ * @returns {string}
+ */
+export function ffmetadata(chapters) {
+  const escape = (text) => text.replace(/[=;#\\\n]/g, (c) => `\\${c}`);
+  const blocks = chapters.map((c) => [
+    '[CHAPTER]', 'TIMEBASE=1/1000', `START=${Math.round(c.start * 1000)}`, `END=${Math.round(c.end * 1000)}`, `title=${escape(c.caption)}`,
+  ].join('\n'));
+  return `;FFMETADATA1\n\n${blocks.join('\n\n')}\n`;
+}
+
+/**
  * The frame for a scene's contact-sheet image: inside the closing hold, after its check passed.
  * @param {{start: number, end: number}} chapter
  * @returns {number}
@@ -128,7 +141,10 @@ export function validateScript(script) {
   script.scenes.forEach((scene, i) => {
     const at = `scene ${i + 1}`;
     if (typeof scene.caption !== 'string' || !scene.caption.trim()) errors.push(`${at}: caption is required`);
-    if (typeof scene.start !== 'string' || !scene.start.startsWith('/')) errors.push(`${at}: start must be a path starting with /`);
+    const continues = i > 0 && scene.start === undefined;
+    if (!continues && (typeof scene.start !== 'string' || !scene.start.startsWith('/'))) {
+      errors.push(`${at}: start must be a path starting with /`);
+    }
     (scene.steps || []).forEach((step, j) => {
       const err = stepError(step);
       if (err) errors.push(`${at} step ${j + 1}: ${err}`);

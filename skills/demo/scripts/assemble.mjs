@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { planEncode, renderComment, sheetTime } from './lib.mjs';
+import { planEncode, renderComment, sheetTime, ffmetadata } from './lib.mjs';
 
 const MB = 1024 * 1024;
 const CRF = 28;
@@ -23,24 +23,25 @@ function parseArgs(argv) {
 
 const ffmpeg = (args) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...args]);
 
-function encode(raw, from, to, out, rate) {
+function encode(raw, from, to, out, rate, meta) {
   const quality = rate
     ? ['-b:v', `${rate}k`, '-maxrate', `${rate}k`, '-bufsize', `${rate * 2}k`]
     : ['-crf', String(CRF)];
-  ffmpeg(['-ss', String(from), '-to', String(to), '-i', raw, '-c:v', 'libx264', '-preset', 'medium', ...quality,
+  ffmpeg(['-ss', String(from), '-to', String(to), '-i', raw, '-i', meta, '-map', '0:v', '-map_chapters', '1',
+    '-c:v', 'libx264', '-preset', 'medium', ...quality,
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out]);
   return fs.statSync(out).size;
 }
 
-function encodeToFit(raw, from, to, out, opts) {
-  if (encode(raw, from, to, out, null) <= opts.limitBytes) return null;
+function encodeToFit(raw, from, to, out, opts, meta) {
+  if (encode(raw, from, to, out, null, meta) <= opts.limitBytes) return null;
   const plan = planEncode({ durationSec: to - from, limitBytes: opts.limitBytes });
   if (plan.tooBig) {
     fs.rmSync(out, { force: true });
     return `${Math.round(to - from)} s of video needs at least ${plan.neededKbps} kbps to stay readable, which does not fit ${opts.limitMb} MB.`;
   }
   for (const rate of [plan.bitrateKbps, Math.floor(plan.bitrateKbps * RETRY_FACTOR)]) {
-    if (encode(raw, from, to, out, rate) <= opts.limitBytes) {
+    if (encode(raw, from, to, out, rate, meta) <= opts.limitBytes) {
       process.stdout.write(`Re-encoded at ${rate} kbps to fit ${opts.limitMb} MB\n`);
       return null;
     }
@@ -85,16 +86,20 @@ function assembleVideo(opts, chapters) {
     const from = group[0].start;
     const to = group[group.length - 1].end;
     const file = path.join(opts.outDir, opts.parts === 2 ? `demo-${i + 1}.mp4` : 'demo.mp4');
-    const problem = encodeToFit(raw, from, to, file, opts);
+    const shift = (t) => Math.round((t - from) * 100) / 100;
+    const groupChapters = group.map((c) => ({
+      ...c, start: shift(c.start), end: shift(c.end), ...(opts.parts === 2 ? { part: i + 1 } : {}),
+    }));
+    const meta = path.join(opts.outDir, `.chapters-${i + 1}.txt`);
+    fs.writeFileSync(meta, ffmetadata(groupChapters));
+    const problem = encodeToFit(raw, from, to, file, opts, meta);
+    fs.rmSync(meta);
     if (problem) {
       files.forEach((f) => fs.rmSync(f, { force: true }));
       return { problem };
     }
     files.push(file);
-    const shift = (t) => Math.round((t - from) * 100) / 100;
-    shifted.push(...group.map((c) => ({
-      ...c, start: shift(c.start), end: shift(c.end), ...(opts.parts === 2 ? { part: i + 1 } : {}),
-    })));
+    shifted.push(...groupChapters);
   }
   contactSheet(raw, chapters, opts.outDir);
   return { files, chapters: shifted };

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatTime, renderComment, planEncode, videoTimes, validateScript, sheetTime,
+  formatTime, renderComment, planEncode, videoTimes, validateScript, sheetTime, ffmetadata,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -99,6 +99,14 @@ test('videoTimes counts back from the end', () => {
   assert.throws(() => videoTimes({ marks: [1000, 4000], closeMs: 9000, durationSec: 6 }), /started late/);
 });
 
+test('ffmetadata writes one chapter per scene', () => {
+  assert.equal(
+    ffmetadata([{ start: 0, end: 4.5, caption: 'One' }, { start: 4.5, end: 10, caption: 'Two = two' }]),
+    ';FFMETADATA1\n\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=4500\ntitle=One\n\n'
+      + '[CHAPTER]\nTIMEBASE=1/1000\nSTART=4500\nEND=10000\ntitle=Two \\= two\n',
+  );
+});
+
 test('sheetTime shows the end of a scene, where its check passed', () => {
   assert.equal(sheetTime({ start: 10, end: 30 }), 29.25);
   assert.equal(sheetTime({ start: 10, end: 10.5 }), 10.25);
@@ -106,6 +114,14 @@ test('sheetTime shows the end of a scene, where its check passed', () => {
 
 test('validateScript accepts the documented sample', () => {
   assert.deepEqual(validateScript(SCRIPT), []);
+});
+
+test('validateScript lets later scenes continue without a start', () => {
+  const s = structuredClone(SCRIPT);
+  s.scenes.push({ caption: 'Then save', steps: [{ press: 'Enter' }], expect: [{ text: 'Saved' }] });
+  assert.deepEqual(validateScript(s), []);
+  const first = withScene((sc) => { delete sc.start; });
+  assert.match(validateScript(first).join(), /scene 1: start/);
 });
 
 test('validateScript accepts exact matching', () => {

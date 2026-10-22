@@ -140,10 +140,11 @@ Write the scenes to `$STATE/<id>/scenes.json`:
   screen can be waited for).
 - Checks: `visible`, `hidden` (a locator), `text` (anywhere on the page), `url`
   (part of the address).
-- `start` is a path on the saved URL. Every scene opens its own start page, so
-  scenes don't depend on each other. Start on the page where the criterion
-  happens; clicking through menus to reach it repeats the same navigation in
-  every scene, unless the navigation is the feature.
+- `start` is a path on the saved URL, required on the first scene. A later
+  scene without `start` carries on from where the previous one ended, so the
+  take has no reloads between scenes; give a scene its own `start` only when
+  it happens on another page. Start on the page where the criterion happens,
+  not on a menu that leads there.
 
 Any visible password field stops the run, because that is how a sign-in page
 is recognised. A criterion whose own screen has one (a change-password form)
@@ -202,6 +203,10 @@ them to the developer and pass `--dirty` unless they confirm every one is
 generated output that doesn't change what was filmed (compiled CSS a dev
 server rewrites, for example). With real code changes, the commit doesn't
 describe what was filmed, and the comment says so.
+
+Each caption in the video shows its scene number and chapter time ("2/5 ·
+0:16"), the same time the comment lists, and the MP4 carries chapter markers
+that QuickTime and VLC show.
 
 It writes `demo.mp4` trimmed to the scenes, `demo-chapters.json` with each
 scene's start, end, caption and check, `sheet.png` with one frame per scene,

@@ -63,6 +63,14 @@ test('video mode trims to the scenes and shifts the chapters', async () => {
   assert.match(r.stdout, /^comment: .*comment\.md$/m);
 });
 
+test('the mp4 carries a chapter marker per scene', async () => {
+  const dir = videoDir(12, TWO_SCENES);
+  const r = await assemble(dir, ['--limit-mb', '5']);
+  assert.equal(r.status, 0, r.stderr);
+  const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_chapters', '-of', 'json', path.join(dir, 'demo.mp4')]).toString());
+  assert.deepEqual(probe.chapters.map((c) => [Number(c.start_time), c.tags.title]), [[0, 'Open the list'], [4.5, 'Edit two rows']]);
+});
+
 test('running twice gives the same chapters', async () => {
   const dir = videoDir(12, TWO_SCENES);
   await assemble(dir, ['--limit-mb', '5']);
