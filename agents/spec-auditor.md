@@ -68,3 +68,10 @@ block.
    a far cheaper thing to answer and much likelier to get a reply. If you
    can't propose an answer, you don't understand the gap well enough to make
    it one of your three — put it in `NON-BLOCKING GAPS` instead.
+5. `OPEN ITEMS`. Every item the spec leaves to the developer, whether marked
+   "dev to confirm", "dev to verify", "TBA" or "to be decided", or asked as an
+   open question for engineering. Quote each one as the spec words it, one per
+   line, and name the repo or system it is about when the spec does. List
+   them all, with no cap, even ones that also appear above. Don't answer
+   them; the next step answers them from code, and this list is its
+   checklist. `none` if there are none.
