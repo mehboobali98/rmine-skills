@@ -51,7 +51,7 @@ async function glide(page, state, x, y) {
 async function runStep(page, step, ctx) {
   const { base, filmed, state } = ctx;
   const [verb] = Object.keys(step).filter((k) => k !== 'value');
-  if (verb === 'goto') return page.goto(base + step.goto);
+  if (verb === 'goto') return page.goto(base + step.goto, { waitUntil: 'domcontentloaded' });
   if (verb === 'wait') return page.waitForTimeout(step.wait);
   if (verb === 'press') return page.keyboard.press(step.press);
 
@@ -96,7 +96,7 @@ async function setCaption(page, state, text) {
 async function runScene(page, scene, ctx, stopAfter) {
   const { base, filmed, state } = ctx;
   state.caption = scene.caption;
-  await page.goto(base + scene.start);
+  await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
   await guardSignedIn(page);
   await setCaption(page, state, scene.caption);
   if (filmed) await page.waitForTimeout(PACE.lead);
@@ -107,7 +107,7 @@ async function runScene(page, scene, ctx, stopAfter) {
     } catch (err) {
       throw new SceneFailure(1, `step ${i + 1} ${describe(step)} failed: ${err.message.split('\n')[0]}`);
     }
-    await page.waitForLoadState('load');
+    await page.waitForLoadState('domcontentloaded');
     await guardSignedIn(page);
     if (filmed) await page.waitForTimeout(PACE.after);
   }
@@ -175,7 +175,7 @@ async function main() {
   await context.exposeBinding('__demoState', () => state);
   await context.addInitScript({ path: new URL('./overlay.js', import.meta.url).pathname });
   const page = await context.newPage();
-  page.setDefaultTimeout(15000);
+  page.setDefaultTimeout(60000);
   if (filmed) {
     await page.setContent('<body style="background:#fff">');
     await page.waitForTimeout(PACE.warmUp);
