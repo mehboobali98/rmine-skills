@@ -127,6 +127,13 @@ test('screenshots writes one image per scene', async () => {
   assert.deepEqual(chapters.map((c) => c.start), [null, null]);
 });
 
+test('a url check does not wait for slow assets', async () => {
+  const slow = structuredClone(SCRIPT);
+  slow.scenes = [{ caption: 'Slow page', start: '/items?slow=1', expect: [{ url: '/items' }] }];
+  const r = await run('rehearse', slow);
+  assert.equal(r.status, 0, r.stderr);
+});
+
 test('--scene is for rehearsal only, and must name a scene', async () => {
   const recorded = await run('record', SCRIPT, { extra: ['--scene', '1'] });
   assert.equal(recorded.status, 2);
