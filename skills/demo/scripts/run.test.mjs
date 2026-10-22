@@ -144,6 +144,18 @@ test('drag moves HTML5 draggables and pointer handles', async () => {
   }
 });
 
+test('exact matches a whole name only', async () => {
+  const items = structuredClone(SCRIPT);
+  items.scenes = [{
+    caption: 'Pick Item 1, not Item 10',
+    start: '/items',
+    steps: [{ click: { role: 'cell', name: 'Item 1', exact: true } }],
+    expect: [{ visible: { role: 'cell', name: 'Item 1', exact: true } }],
+  }];
+  const r = await run('rehearse', items);
+  assert.equal(r.status, 0, r.stderr);
+});
+
 test('a url check does not wait for slow assets', async () => {
   const slow = structuredClone(SCRIPT);
   slow.scenes = [{ caption: 'Slow page', start: '/items?slow=1', expect: [{ url: '/items' }] }];

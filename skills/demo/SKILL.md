@@ -132,7 +132,8 @@ Write the scenes to `$STATE/<id>/scenes.json`:
 
 - A locator is one of `role` (with an optional `name`), `label`, `text`,
   `placeholder`, `testId` or `css`. Prefer them in that order. `css` breaks
-  first when the markup changes.
+  first when the markup changes. Names and text match as substrings; add
+  `"exact": true` when one name is part of another ("1U" and "10U").
 - Steps: `goto` (a path), `click`, `hover`, `fill` and `select` (each with
   `value`), `drag` (with a `to` locator, for drag and drop and drawn
   connections), `press` (a key), `wait` (milliseconds, only when nothing on

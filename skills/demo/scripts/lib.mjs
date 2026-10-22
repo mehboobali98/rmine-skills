@@ -61,11 +61,12 @@ export function videoTimes({ marks, closeMs, durationSec }) {
 
 function locatorError(loc) {
   if (!loc || typeof loc !== 'object') return 'needs a locator';
-  const keys = Object.keys(loc).filter((k) => k !== 'name');
+  const keys = Object.keys(loc).filter((k) => k !== 'name' && k !== 'exact');
   if (keys.length !== 1 || !LOCATOR_KEYS.includes(keys[0])) {
     return `locator must use exactly one of ${LOCATOR_KEYS.join(', ')}`;
   }
   if ('name' in loc && keys[0] !== 'role') return 'name only goes with role';
+  if ('exact' in loc && typeof loc.exact !== 'boolean') return 'exact is true or false';
   return null;
 }
 

@@ -24,10 +24,11 @@ function parseArgs(argv) {
 }
 
 function locate(page, loc) {
-  if (loc.role) return page.getByRole(loc.role, loc.name ? { name: loc.name } : {});
-  if (loc.label) return page.getByLabel(loc.label);
-  if (loc.text) return page.getByText(loc.text);
-  if (loc.placeholder) return page.getByPlaceholder(loc.placeholder);
+  const exact = { exact: loc.exact === true };
+  if (loc.role) return page.getByRole(loc.role, loc.name ? { name: loc.name, ...exact } : {});
+  if (loc.label) return page.getByLabel(loc.label, exact);
+  if (loc.text) return page.getByText(loc.text, exact);
+  if (loc.placeholder) return page.getByPlaceholder(loc.placeholder, exact);
   if (loc.testId) return page.getByTestId(loc.testId);
   return page.locator(loc.css);
 }
