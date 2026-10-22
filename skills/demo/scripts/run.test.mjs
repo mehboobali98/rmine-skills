@@ -200,6 +200,12 @@ test('exact matches a whole name only', async () => {
   assert.equal(r.status, 0, r.stderr);
 });
 
+test('hide keeps unrelated overlays out of the take', async () => {
+  const hidden = { ...CONTINUED, hide: ['#count'], scenes: [{ caption: 'List without its counter', start: '/items', expect: [{ hidden: { css: '#count' } }] }] };
+  const r = await run('rehearse', hidden);
+  assert.equal(r.status, 0, r.stderr);
+});
+
 test('a url check does not wait for slow assets', async () => {
   const slow = structuredClone(SCRIPT);
   slow.scenes = [{ caption: 'Slow page', start: '/items?slow=1', expect: [{ url: '/items' }] }];

@@ -63,6 +63,17 @@ test('video mode trims to the scenes and shifts the chapters', async () => {
   assert.match(r.stdout, /^comment: .*comment\.md$/m);
 });
 
+test('gaps between scenes are cut out, and the chapters re-timed', async () => {
+  const dir = videoDir(16, [
+    { scene: 1, caption: 'One', start: 1, end: 5 },
+    { scene: 2, caption: 'Two', start: 8, end: 12 },
+  ]);
+  const r = await assemble(dir, ['--limit-mb', '5']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(Math.abs(duration(path.join(dir, 'demo.mp4')) - 8) < 0.25, `duration ${duration(path.join(dir, 'demo.mp4'))}`);
+  assert.deepEqual(JSON.parse(read(dir, 'demo-chapters.json')).map((c) => [c.start, c.end]), [[0, 4], [4, 8]]);
+});
+
 test('the mp4 carries a chapter marker per scene', async () => {
   const dir = videoDir(12, TWO_SCENES);
   const r = await assemble(dir, ['--limit-mb', '5']);

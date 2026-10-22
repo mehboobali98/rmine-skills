@@ -129,6 +129,9 @@ export function validateScript(script) {
   if (!['video', 'screenshots'].includes(script.mode)) errors.push('mode must be "video" or "screenshots"');
   const vp = script.viewport;
   if (!vp || !Number.isInteger(vp.width) || !Number.isInteger(vp.height)) errors.push('viewport needs integer width and height');
+  if (script.hide !== undefined && !(Array.isArray(script.hide) && script.hide.every((h) => typeof h === 'string' && h))) {
+    errors.push('hide is a list of CSS selectors');
+  }
   (script.omitted || []).forEach((o, i) => {
     if (typeof o.criterion !== 'string' || !o.criterion || typeof o.reason !== 'string' || !o.reason) {
       errors.push(`omitted ${i + 1}: criterion and reason are both required`);
