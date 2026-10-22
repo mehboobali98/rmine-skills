@@ -31,3 +31,22 @@ jobs:
           for j in .claude-plugin/*.json; do
             python -m json.tool "$j" > /dev/null
           done
+
+  demo:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["18", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: /demo script tests
+        run: node --test skills/demo/scripts/*.test.mjs

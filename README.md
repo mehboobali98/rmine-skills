@@ -15,6 +15,7 @@ above: multi-step workflows that read a ticket and do something useful with it.
 | `/log [day]` | Drafts a day's Redmine time entries from git activity: which ticket branches and review worktrees you touched, and for how long relative to each other. You give the day's total, it splits the hours, and nothing is logged until you approve the table. |
 | `/postmortem <issue>` | For one finished ticket, lines its estimate up against where the time went: git proposes which lines the development hours went into, the developer confirms, and each anchor row is checked against its range. Writes `postmortems/postmortem-<id>.md`, the per-ticket evidence a rubric PR has to cite, and rolls every postmortem up into one view per anchor row. |
 | `/sprint-plan <version>` | Sets a sprint's or monthly bucket's remaining estimated work against each assignee's capacity for the period, so an overbooked person shows up even when the team total looks fine. Lists unestimated tickets instead of guessing them, and applies `/calibrate` drift only when its bar is met. Read-only. |
+| `/demo <issue>` | Drives your locally running app through the ticket's acceptance criteria, one scene each, and records it with a caption per scene. Posts the video, or screenshots for a small feature, as one comment with a chapter list, so PM and QA can watch when they're free and reply against a time. Stops and posts nothing if a scene's check fails. |
 | `/spec-interview <issue>` | Audits a spec, routes each gap to whoever can actually close it — code, you, or the requester — and posts the questions that are left back to the ticket, each with the assumption that stands if nobody replies. |
 
 `/estimate` runs three subagents that ship with the plugin, each carrying its own
@@ -56,6 +57,13 @@ Prerequisites, all of which `/estimate` checks before it starts:
 3. **`python3`**, for the `.docx` spec extractor and the `/calibrate` and
    `/log`, `/sprint-plan` and `/postmortem` scripts.
    Stdlib only; nothing to install.
+
+4. **For `/demo` only: Node 18 or later and `ffmpeg`.** `/demo` is the one skill
+   with a dependency. On its first run it installs Playwright and Chromium into
+   the plugin's own folder. Your app has to be running locally; `/demo` never
+   starts it. You sign in by hand once, and the session is saved under
+   `~/.local/state/rmine-skills/demo/`, outside your repo, along with every
+   video it records.
 
 That's the whole setup. There is no calibration file to populate — the rubric
 ships with the plugin, so everyone estimates against the same numbers from
@@ -139,9 +147,9 @@ hours across every committed postmortem; that is the evidence a rubric PR
 cites.
 
 `/estimate` and `/calibrate` write nothing back to Redmine. `/spec-interview`
-does — one comment, on a ticket you name, and only after showing you the exact
-text and getting a yes. It touches nothing else: no status, no fields, no
-assignee.
+and `/demo` do. Each posts one comment, on a ticket you name, and only after
+showing you the exact text (and for `/demo`, the video) and getting a yes.
+Neither touches anything else: no status, no fields, no assignee.
 
 ## What's next
 

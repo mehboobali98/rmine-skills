@@ -12,8 +12,8 @@ Audit the spec, turn the gaps that matter into questions, answer the ones that
 can be answered here, and **write the rest back to the ticket** — so the spec is
 fixed where it lives rather than in one person's terminal.
 
-**This skill writes to Redmine, and never without explicit approval.** It is
-the only skill in this plugin that writes anything at all. It posts one comment,
+**This skill writes to Redmine, and never without explicit approval.** It and
+`/demo` are the only skills in this plugin that write anything at all. It posts one comment,
 only after showing the user the exact text and getting a yes for *that text* on
 *that ticket*. Nothing else is touched: no status, no fields, no assignee. The
 approval rule is unconditional and is spelled out in step 6 — read it before

@@ -17,6 +17,18 @@ Compares the ticket now against what was estimated then, and flags scope added
 since. Also protects the corpus: a ratio computed for a ticket whose scope
 doubled is noise being counted as signal.
 
+### `/demo`, next steps
+
+`/demo` records plain footage of a local app. Two things it leaves out on
+purpose, each worth its own step:
+
+1. **A voice-over cut.** A separate skill that takes `demo.mp4` and
+   `demo-chapters.json` and adds narration. Plain footage is enough for PM and
+   QA; a narrated cut is for people who weren't in the conversation.
+2. **Recording against staging.** Local only for now, because every developer
+   signs in with their own local account. Staging needs a shared way to sign
+   in that keeps passwords out of the skill.
+
 ### Deliberately not building
 
 `/standup` and `/triage`. Useful, but they are `rmine` conveniences rather than
