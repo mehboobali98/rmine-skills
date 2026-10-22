@@ -147,7 +147,13 @@ Write the scenes to `$STATE/<id>/scenes.json`:
 
 Any visible password field stops the run, because that is how a sign-in page
 is recognised. A criterion whose own screen has one (a change-password form)
-can't be filmed. Leave it out and say so in the scene list.
+can't be filmed.
+
+When a criterion can't be filmed (that case, or a local service the developer
+chose not to start), list it in the script's top-level `omitted`, as
+`{ "criterion": "...", "reason": "..." }`. The comment then says
+`Not shown: <criterion> (<reason>).`, so nobody reads the video as covering
+it.
 
 A check must prove the criterion, not only that the page loaded. "The saved
 row shows the new status" is a check; "the Save button exists" is not.

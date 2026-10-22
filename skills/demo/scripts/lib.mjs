@@ -22,17 +22,19 @@ export function formatTime(seconds) {
 /**
  * The Redmine comment body. A null start numbers the line instead of timing it.
  * @param {{subject: string, branch: string, sha: string, dirty: boolean,
- *   chapters: {start: number|null, caption: string, part?: number}[]}} demo
+ *   chapters: {start: number|null, caption: string, part?: number}[],
+ *   omitted?: {criterion: string, reason: string}[]}} demo
  * @returns {string}
  */
-export function renderComment({ subject, branch, sha, dirty, chapters }) {
+export function renderComment({ subject, branch, sha, dirty, chapters, omitted = [] }) {
   const state = dirty ? `${sha} with uncommitted changes` : sha;
   const line = (c, i) => (c.start === null ? `${i + 1}. ${c.caption}` : `${formatTime(c.start)} ${c.caption}`);
   const parts = [...new Set(chapters.map((c) => c.part).filter(Boolean))];
   const blocks = parts.length
     ? parts.map((p) => [`Part ${p}`, ...chapters.filter((c) => c.part === p).map(line)].join('\n'))
     : [chapters.map(line).join('\n')];
-  return [`Demo of ${subject}, recorded on ${branch} at ${state}.`, ...blocks.filter(Boolean), REPLY_LINE]
+  const notShown = omitted.map((o) => `Not shown: ${o.criterion} (${o.reason}).`).join('\n');
+  return [`Demo of ${subject}, recorded on ${branch} at ${state}.`, ...blocks.filter(Boolean), notShown, REPLY_LINE].filter(Boolean)
     .join('\n\n') + '\n';
 }
 
@@ -114,6 +116,11 @@ export function validateScript(script) {
   if (!['video', 'screenshots'].includes(script.mode)) errors.push('mode must be "video" or "screenshots"');
   const vp = script.viewport;
   if (!vp || !Number.isInteger(vp.width) || !Number.isInteger(vp.height)) errors.push('viewport needs integer width and height');
+  (script.omitted || []).forEach((o, i) => {
+    if (typeof o.criterion !== 'string' || !o.criterion || typeof o.reason !== 'string' || !o.reason) {
+      errors.push(`omitted ${i + 1}: criterion and reason are both required`);
+    }
+  });
   if (!Array.isArray(script.scenes) || script.scenes.length === 0) {
     errors.push('no scenes');
     return errors;

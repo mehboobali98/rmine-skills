@@ -118,6 +118,13 @@ test('record stops on a password field', async () => {
   assert.ok(!exists(r.out, 'raw.webm'));
 });
 
+test('record passes the omitted criteria on to assembly', async () => {
+  const omitted = [{ criterion: 'Bulk delete', reason: 'not built yet' }];
+  const r = await run('record', { ...SCRIPT, omitted });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(r.out, 'omitted.json'), 'utf8')), omitted);
+});
+
 test('screenshots writes one image per scene', async () => {
   const r = await run('screenshots', { ...SCRIPT, mode: 'screenshots' });
   assert.equal(r.status, 0, r.stderr);
