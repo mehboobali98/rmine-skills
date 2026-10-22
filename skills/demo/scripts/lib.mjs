@@ -59,6 +59,15 @@ export function videoTimes({ marks, closeMs, durationSec }) {
   return times;
 }
 
+/**
+ * The frame for a scene's contact-sheet image: inside the closing hold, after its check passed.
+ * @param {{start: number, end: number}} chapter
+ * @returns {number}
+ */
+export function sheetTime({ start, end }) {
+  return Math.max((start + end) / 2, end - 0.75);
+}
+
 function locatorError(loc) {
   if (!loc || typeof loc !== 'object') return 'needs a locator';
   const keys = Object.keys(loc).filter((k) => k !== 'name' && k !== 'exact');

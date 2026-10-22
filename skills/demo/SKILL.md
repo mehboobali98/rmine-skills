@@ -141,7 +141,9 @@ Write the scenes to `$STATE/<id>/scenes.json`:
 - Checks: `visible`, `hidden` (a locator), `text` (anywhere on the page), `url`
   (part of the address).
 - `start` is a path on the saved URL. Every scene opens its own start page, so
-  scenes don't depend on each other.
+  scenes don't depend on each other. Start on the page where the criterion
+  happens; clicking through menus to reach it repeats the same navigation in
+  every scene, unless the navigation is the feature.
 
 Any visible password field stops the run, because that is how a sign-in page
 is recognised. A criterion whose own screen has one (a change-password form)
