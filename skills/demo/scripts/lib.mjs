@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 const LOCATOR_KEYS = ['role', 'label', 'text', 'placeholder', 'testId', 'css'];
 const LOCATOR_STEPS = ['click', 'hover', 'fill', 'select'];
 const NEEDS_VALUE = ['fill', 'select'];
@@ -127,17 +125,6 @@ export function validateScript(script) {
     }
   });
   return errors;
-}
-
-/**
- * The per-user directory for one product repo, shared by all its worktrees.
- * @param {{env: object, home: string, gitCommonDir: string}} input
- * @returns {string}
- */
-export function stateDir({ env, home, gitCommonDir }) {
-  const base = env.XDG_STATE_HOME || path.join(home, '.local', 'state');
-  const repo = path.basename(path.dirname(path.resolve(gitCommonDir)));
-  return path.join(base, 'rmine-skills', 'demo', repo);
 }
 
 /**

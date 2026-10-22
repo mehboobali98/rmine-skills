@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatTime, renderComment, planEncode, videoTimes, validateScript, stateDir,
+  formatTime, renderComment, planEncode, videoTimes, validateScript,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -111,12 +111,4 @@ test('validateScript names each problem', () => {
     assert.equal(errors.length, 1, `${pattern}: ${errors.join('; ')}`);
     assert.match(errors[0], pattern);
   }
-});
-
-test('stateDir', () => {
-  assert.equal(stateDir({ env: {}, home: '/h', gitCommonDir: '/w/app/.git' }), '/h/.local/state/rmine-skills/demo/app');
-  assert.equal(
-    stateDir({ env: { XDG_STATE_HOME: '/s' }, home: '/h', gitCommonDir: '/w/app/.git' }),
-    '/s/rmine-skills/demo/app',
-  );
 });
