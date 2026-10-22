@@ -17,6 +17,25 @@ const PAGES = {
     <button onclick="document.querySelector('h1').textContent = 'Saved ' + document.getElementById('name').value">Save</button>`,
 };
 
+PAGES['/board'] = `<h1>Board</h1>
+  <div id="card" draggable="true" style="width:120px;padding:8px;border:1px solid #999">Card</div>
+  <div id="zone" style="margin-top:40px;width:240px;height:80px;border:2px dashed #999">Drop zone</div>
+  <div id="handle" style="margin-top:40px;width:16px;height:16px;border-radius:50%;background:#e44">&nbsp;</div>
+  <div id="socket" style="margin:40px 0 0 300px;width:100px;height:40px;border:1px solid #999">Socket</div>
+  <p id="status">Idle</p>
+  <script>
+    const zone = document.getElementById('zone');
+    document.getElementById('card').addEventListener('dragstart', (e) => e.dataTransfer.setData('text/plain', 'card'));
+    zone.addEventListener('dragover', (e) => e.preventDefault());
+    zone.addEventListener('drop', (e) => { e.preventDefault(); zone.textContent = 'Dropped ' + e.dataTransfer.getData('text/plain'); });
+    let wiring = false;
+    document.getElementById('handle').addEventListener('pointerdown', () => { wiring = true; });
+    document.addEventListener('pointerup', (e) => {
+      if (wiring && e.target.id === 'socket') document.getElementById('status').textContent = 'Wired';
+      wiring = false;
+    });
+  </script>`;
+
 const html = (body) => `<!doctype html><html><head><title>Sample app</title><style>${STYLE}</style></head>
 <body><header>Sample app</header><main>${body}</main></body></html>`;
 

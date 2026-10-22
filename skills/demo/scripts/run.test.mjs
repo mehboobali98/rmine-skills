@@ -127,6 +127,23 @@ test('screenshots writes one image per scene', async () => {
   assert.deepEqual(chapters.map((c) => c.start), [null, null]);
 });
 
+test('drag moves HTML5 draggables and pointer handles', async () => {
+  const board = structuredClone(SCRIPT);
+  board.scenes = [{
+    caption: 'Drag a card and wire a socket',
+    start: '/board',
+    steps: [
+      { drag: { css: '#card' }, to: { text: 'Drop zone' } },
+      { drag: { css: '#handle' }, to: { css: '#socket' } },
+    ],
+    expect: [{ text: 'Dropped card' }, { text: 'Wired' }],
+  }];
+  for (const mode of ['rehearse', 'record']) {
+    const r = await run(mode, board);
+    assert.equal(r.status, 0, `${mode}: ${r.stderr}`);
+  }
+});
+
 test('a url check does not wait for slow assets', async () => {
   const slow = structuredClone(SCRIPT);
   slow.scenes = [{ caption: 'Slow page', start: '/items?slow=1', expect: [{ url: '/items' }] }];

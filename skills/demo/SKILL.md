@@ -134,8 +134,9 @@ Write the scenes to `$STATE/<id>/scenes.json`:
   `placeholder`, `testId` or `css`. Prefer them in that order. `css` breaks
   first when the markup changes.
 - Steps: `goto` (a path), `click`, `hover`, `fill` and `select` (each with
-  `value`), `press` (a key), `wait` (milliseconds, only when nothing on screen
-  can be waited for).
+  `value`), `drag` (with a `to` locator, for drag and drop and drawn
+  connections), `press` (a key), `wait` (milliseconds, only when nothing on
+  screen can be waited for).
 - Checks: `visible`, `hidden` (a locator), `text` (anywhere on the page), `url`
   (part of the address).
 - `start` is a path on the saved URL. Every scene opens its own start page, so

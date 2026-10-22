@@ -1,5 +1,5 @@
 const LOCATOR_KEYS = ['role', 'label', 'text', 'placeholder', 'testId', 'css'];
-const LOCATOR_STEPS = ['click', 'hover', 'fill', 'select'];
+const LOCATOR_STEPS = ['click', 'hover', 'fill', 'select', 'drag'];
 const NEEDS_VALUE = ['fill', 'select'];
 const EXPECT_KINDS = ['visible', 'hidden', 'text', 'url'];
 const FLOOR_KBPS = 150;
@@ -70,13 +70,14 @@ function locatorError(loc) {
 }
 
 function stepError(step) {
-  const verbs = Object.keys(step).filter((k) => k !== 'value');
+  const verbs = Object.keys(step).filter((k) => k !== 'value' && k !== 'to');
   if (verbs.length !== 1) return 'a step has exactly one action';
   const [verb] = verbs;
   if (LOCATOR_STEPS.includes(verb)) {
     const err = locatorError(step[verb]);
     if (err) return err;
     if (NEEDS_VALUE.includes(verb) && typeof step.value !== 'string') return `${verb} needs a string value`;
+    if (verb === 'drag') return step.to ? locatorError(step.to) : 'drag needs a to locator';
     return null;
   }
   if (verb === 'goto') return typeof step.goto === 'string' && step.goto.startsWith('/') ? null : 'goto takes a path starting with /';
