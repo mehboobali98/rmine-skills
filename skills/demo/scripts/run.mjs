@@ -79,7 +79,7 @@ async function runExpect(page, item) {
   if (kind === 'text') {
     return page.waitForFunction((t) => document.body.innerText.includes(t), item.text, { timeout: TIMEOUT_MS });
   }
-  return page.waitForURL((u) => u.href.includes(item.url), { timeout: TIMEOUT_MS });
+  return page.waitForURL((u) => u.href.includes(item.url), { timeout: TIMEOUT_MS, waitUntil: 'commit' });
 }
 
 async function guardSignedIn(page) {
