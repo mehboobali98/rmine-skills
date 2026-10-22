@@ -189,8 +189,11 @@ node "$S/assemble.mjs" "$OUT" --subject "<ticket subject>" \
   --limit-mb <max_attachment_mb> [--dirty]
 ```
 
-Pass `--dirty` when `git status --porcelain` prints anything. The commit
-doesn't describe what was filmed then, and the comment says so.
+Check `git status --porcelain --untracked-files=no`. If it lists files, show
+them to the developer and pass `--dirty` unless they confirm every one is
+generated output that doesn't change what was filmed (compiled CSS a dev
+server rewrites, for example). With real code changes, the commit doesn't
+describe what was filmed, and the comment says so.
 
 It writes `demo.mp4` trimmed to the scenes, `demo-chapters.json` with each
 scene's start, end, caption and check, `sheet.png` with one frame per scene,
