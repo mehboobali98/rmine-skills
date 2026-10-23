@@ -14,7 +14,9 @@ them.
   criteria, one scene each, rehearsed first and then recorded in one take with
   a caption and a visible pointer. It posts the video, or one screenshot per
   scene for a small feature, as one comment with a chapter list, so feedback
-  can point at a time. A failing scene check stops the run and nothing is
+  can point at a time. Scenes run as one continuous take with page loads cut
+  out, each caption carries its scene number and time, and the MP4 has chapter
+  markers. A failing scene check stops the run and nothing is
   posted. The comment goes up only after an explicit yes, as with
   `/spec-interview`.
 

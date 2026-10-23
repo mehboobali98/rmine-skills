@@ -1,260 +1,162 @@
 ---
 name: demo
-description: Record a demo of a finished feature in the developer's locally running app, one scene per acceptance criterion, and post the video (or screenshots) with a chapter list as one Redmine comment after explicit approval. Use when the user asks to demo a ticket, record a feature walkthrough, show PM or QA a feature, or replace a demo meeting with a video on the ticket.
+description: Record a finished feature in the developer's locally running app, one scene per acceptance criterion, and post the video or screenshots with a chapter list as one Redmine comment after approval. Use when the user asks to demo a ticket, record a walkthrough for PM or QA, or replace a demo meeting with a video on the ticket.
 ---
 
 # Demo
 
-A finished feature usually waits for a demo meeting before QA gets it. This
-skill replaces the meeting. You drive the developer's local app through the
-ticket's acceptance criteria, record one clean take, and post it to the ticket
-with a chapter list. PM and QA watch it when they are free and reply against a
-time: "at 1:30 the empty state is wrong".
+A finished feature waits for a demo meeting before QA gets it. This skill
+replaces the meeting: drive the developer's local app through the ticket's
+acceptance criteria, film one take, and post it with a chapter list so PM and
+QA can reply against a time ("at 1:30 the empty state is wrong").
 
-PM and QA need to see the real feature in the real app. Plain footage, one
-caption per scene, a chapter list. No title cards, zooms or music.
+The take is real footage of the real app, and every scene ends on a check. A
+failed check stops the run and deletes the video, so a demo only ever shows a
+feature that works.
 
-**Never post a demo that hides a bug.** Every scene has a check. If a check
-fails while recording, the run stops, the video is deleted, and nothing is
-posted. Report what was on screen instead.
+The skill works through the browser alone. Servers, data and sign-in belong to
+the developer: they start the app, create any data a scene needs, and type
+their own password. The only write to Redmine is one comment, posted after an
+explicit yes (step 6).
 
-**This skill drives the browser and nothing else.** It never starts a server,
-touches a database, seeds data, or handles a password. If a scene needs data
-that isn't there, the developer creates it.
-
-**It writes one comment to Redmine, only after an explicit yes** for that exact
-text and those files, in this run, on this ticket. Nothing else changes: no
-status, no fields, no assignee. Step 6 has the rules.
-
-`$S` below is `${CLAUDE_PLUGIN_ROOT}/skills/demo/scripts`.
+`$S` is `${CLAUDE_PLUGIN_ROOT}/skills/demo/scripts`. Run from inside the
+product repo.
 
 ## 0. Preflight
 
 ```sh
-rmine whoami
-rmine version
-node -v
-ffmpeg -version | head -1
+rmine whoami && rmine version && node -v && ffmpeg -version | head -1
 ```
 
-- `rmine whoami` fails: stop and point at
-  `go install github.com/mehboobali98/rmine/cmd/rmine@latest` then
-  `rmine config init`.
-- Step 6 needs rmine v0.7.0 or later for `--file`. Say so now if it is older.
-- Node 18 or later, and `ffmpeg` with `ffprobe` on `PATH`.
-- If `${CLAUDE_PLUGIN_ROOT}/node_modules/playwright` is missing (the first run,
-  or after a plugin update), install it:
+`rmine` v0.7.0 or later (if missing: `go install
+github.com/mehboobali98/rmine/cmd/rmine@latest`, then `rmine config init`),
+Node 18 or later, `ffmpeg` and `ffprobe`. If
+`${CLAUDE_PLUGIN_ROOT}/node_modules/playwright` is missing, install it:
 
-  ```sh
-  npm install --prefix "${CLAUDE_PLUGIN_ROOT}"
-  npx --prefix "${CLAUDE_PLUGIN_ROOT}" playwright install chromium
-  ```
+```sh
+npm install --prefix "${CLAUDE_PLUGIN_ROOT}"
+npx --prefix "${CLAUDE_PLUGIN_ROOT}" playwright install chromium
+```
 
-Run from inside the product repo. Settings, the saved session and every output
-file live outside it, per user and per repo:
+Settings, the session and all output live per user and per repo, outside the
+repo:
 
 ```sh
 REPO=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/rmine-skills/demo/$REPO"
+OUT="$STATE/<id>"
 node "$S/session.mjs" check "$STATE"
 ```
 
-| Exit | Meaning | Do |
-|---|---|---|
-| 0 | Signed in | Go to step 2 |
-| 3 | The app is not reachable | Stop. Say which URL, and that the developer starts the app. Never start it yourself |
-| 4 | No session, or it expired | Step 1 |
+Exit 0: go to step 2. Exit 4: step 1. Exit 3: the app isn't reachable at the
+printed URL; ask the developer to start it, and stop.
 
 ## 1. Sign in (once per machine and app)
 
-Each developer signs in by hand with their own local account. You never see or
-type a password.
+1. Ask for the app's local URL, and for Redmine's maximum attachment size
+   (Administration, Settings, Files; 5 MB if they don't know).
+2. Run `node "$S/session.mjs" signin "$STATE" <url>` in the background. A
+   browser window opens; the developer signs in there.
+3. Ask with AskUserQuestion whether they are signed in. On yes, `touch
+   "$STATE/.signed-in"`.
+4. Set `max_attachment_mb` in `$STATE/settings.json`.
 
-1. Ask for the app's local URL if `$STATE/settings.json` has none.
-2. Start the sign-in window in the background:
-   `node "$S/session.mjs" signin "$STATE" <url>`.
-3. Tell the developer a browser window opened, and to sign in there. Then ask
-   with AskUserQuestion whether they are signed in.
-4. On yes: `touch "$STATE/.signed-in"`. The script saves the session and exits
-   0. Exit 4 means the page still shows a password field: ask them to finish
-   and confirm again. Exit 6 means the window was closed or 15 minutes passed.
-
-The first time, also ask for Redmine's maximum attachment size
-(Administration, Settings, Files, "Maximum attachment size") and write it to
-`max_attachment_mb` in `$STATE/settings.json`. If they don't know it, keep the
-default of 5, Redmine's own default.
+Done when `session.mjs check` exits 0. (Exit 4 from `signin`: a password field
+is still showing. Exit 6: the window closed or 15 minutes passed.)
 
 ## 2. Script the scenes
 
-Read the ticket and its spec exactly as `/estimate` step 1 does: the ticket
-with `rmine issue view <id> --comments -o json`, then the Google Doc,
-attachment or description, and the linked issues.
+Read the ticket and its spec the way `/estimate` step 1 does:
+`rmine issue view <id> --comments -o json`, then the Google Doc, attachment or
+description, and linked issues.
 
-Turn each acceptance criterion into one scene: where it starts, what to do,
-what must be on screen at the end (the check), and a one-line caption in plain
-words a PM would use. With no acceptance criteria, draft scenes from the
-description and say that you did.
+Draft one scene per acceptance criterion, each with a caption and a check that
+proves it. With no acceptance criteria, draft from the description and say so.
+Propose **video** when any scene has a flow worth watching, **screenshots**
+when every scene ends in one static state.
 
-Show the developer the scene list and get a yes with AskUserQuestion. Propose
-the format in the same question:
+Read `references/scene-script.md` before writing `$OUT/scenes.json`: the
+format, and what makes a take worth the watchers' time.
 
-- **Screenshots** when every scene ends in one static state worth seeing.
-- **Video** when any scene has a flow worth watching.
-
-The developer can override either way.
-
-Write the scenes to `$STATE/<id>/scenes.json`:
-
-```json
-{
-  "issue": 123,
-  "subject": "Ticket subject",
-  "mode": "video",
-  "viewport": { "width": 1280, "height": 800 },
-  "scenes": [
-    {
-      "caption": "Filter the list by status",
-      "criterion": "The acceptance criterion this scene proves",
-      "start": "/items",
-      "steps": [
-        { "click": { "role": "button", "name": "Filters" } },
-        { "fill": { "label": "Status" }, "value": "Open" },
-        { "press": "Enter" }
-      ],
-      "expect": [
-        { "visible": { "text": "3 results" } },
-        { "url": "status=open" }
-      ]
-    }
-  ]
-}
-```
-
-- A locator is one of `role` (with an optional `name`), `label`, `text`,
-  `placeholder`, `testId` or `css`. Prefer them in that order. `css` breaks
-  first when the markup changes. Names and text match as substrings; add
-  `"exact": true` when one name is part of another ("1U" and "10U").
-- Steps: `goto` (a path), `click`, `hover`, `fill` and `select` (each with
-  `value`), `drag` (with a `to` locator, for drag and drop and drawn
-  connections), `press` (a key), `wait` (milliseconds, only when nothing on
-  screen can be waited for).
-- Checks: `visible`, `hidden` (a locator), `text` (anywhere on the page), `url`
-  (part of the address).
-- `start` is a path on the saved URL, required on the first scene. A later
-  scene without `start` carries on from where the previous one ended, so the
-  take has no reloads between scenes; give a scene its own `start` only when
-  it happens on another page. Start on the page where the criterion happens,
-  not on a menu that leads there.
-
-Any visible password field stops the run, because that is how a sign-in page
-is recognised. A criterion whose own screen has one (a change-password form)
-can't be filmed.
-
-When a criterion can't be filmed (that case, or a local service the developer
-chose not to start), list it in the script's top-level `omitted`, as
-`{ "criterion": "...", "reason": "..." }`. The comment then says
-`Not shown: <criterion> (<reason>).`, so nobody reads the video as covering
-it.
-
-A check must prove the criterion, not only that the page loaded. "The saved
-row shows the new status" is a check; "the Save button exists" is not.
+Done when the developer has approved the scene list and the format with
+AskUserQuestion, and any criterion that can't be filmed is in `omitted` with
+its reason.
 
 ## 3. Rehearse, then record
 
-Work out the exact steps against the live app first, unrecorded. Recording you
-while you explore would capture every pause and wrong turn.
+Rehearse unrecorded until every scene passes. Each run prints `PASS`, `FAIL` or
+`STOPPED` per scene and leaves `look.png` and `look.aria.txt` (the page's
+accessibility tree) from where it stopped; read both to find the next locator.
+`--scene N --steps K` stops partway through a scene, after running the scenes
+it carries on from.
 
 ```sh
-node "$S/run.mjs" rehearse "$OUT/scenes.json" "$STATE" "$OUT"
-node "$S/run.mjs" rehearse "$OUT/scenes.json" "$STATE" "$OUT" --scene 2 --steps 1
+node "$S/run.mjs" rehearse "$OUT/scenes.json" "$STATE" "$OUT" [--scene N --steps K]
+node "$S/run.mjs" record "$OUT/scenes.json" "$STATE" "$OUT"        # or: screenshots
 ```
 
-where `OUT="$STATE/<id>"`. Each run prints `PASS`, `FAIL` or `STOPPED` per
-scene and leaves `look.png` and `look.aria.txt` (the page's accessibility
-tree) from where it stopped. Read both to find the next locator. On a failure
-the same pair is written as `failure.png` and `failure.aria.txt`.
+| Exit | Do |
+|---|---|
+| 0 | Step 4 |
+| 1 | Read `failure.png` and `failure.aria.txt`. A wrong locator or timing is a script fix: fix, rehearse, record again. A feature that misbehaves is a finding: stop, and tell the developer which scene and what was on screen. Checks stay as strict as the criterion |
+| 2 | Fix the script errors it lists |
+| 4 | The app showed a sign-in page: step 1, then record again |
 
-When every scene passes, record the script in one take:
-
-```sh
-node "$S/run.mjs" record "$OUT/scenes.json" "$STATE" "$OUT"
-node "$S/run.mjs" screenshots "$OUT/scenes.json" "$STATE" "$OUT"
-```
-
-| Exit | Meaning | Do |
-|---|---|---|
-| 0 | Every check passed | Step 4 |
-| 1 | A step or check failed | Read `failure.png`. If the script was wrong (a locator, a missing wait), fix it, rehearse and record again. If the feature is wrong, stop and tell the developer which scene and what was on screen. Never loosen a check to get a take |
-| 2 | The scene script is invalid | Fix what it lists |
-| 4 | The app showed a sign-in page | Step 1, then record again |
-
-A failed take deletes its video, so it can never be posted by mistake.
+Done when `record` (or `screenshots`) exits 0.
 
 ## 4. Assemble
+
+Run `git status --porcelain --untracked-files=no`. If it lists files, show
+them to the developer: pass `--dirty` unless every one is generated output
+that doesn't change what was filmed (compiled CSS a dev server rewrites).
 
 ```sh
 node "$S/assemble.mjs" "$OUT" --subject "<ticket subject>" \
   --branch "$(git rev-parse --abbrev-ref HEAD)" --sha "$(git rev-parse --short HEAD)" \
-  --limit-mb <max_attachment_mb> [--dirty]
+  --limit-mb <max_attachment_mb> [--dirty] [--parts 2]
 ```
 
-Check `git status --porcelain --untracked-files=no`. If it lists files, show
-them to the developer and pass `--dirty` unless they confirm every one is
-generated output that doesn't change what was filmed (compiled CSS a dev
-server rewrites, for example). With real code changes, the commit doesn't
-describe what was filmed, and the comment says so.
+It cuts page loads out of the take, encodes `demo.mp4` with chapter markers to
+fit the limit, and writes `sheet.png` (each scene's final frame),
+`demo-chapters.json` and `comment.md`. It prints `comment:` and one `attach:`
+line per file.
 
-Each caption in the video shows its scene number and chapter time ("2/5 ·
-0:16"), the same time the comment lists, and the MP4 carries chapter markers
-that QuickTime and VLC show.
-
-It writes `demo.mp4` trimmed to the scenes, `demo-chapters.json` with each
-scene's start, end, caption and check, `sheet.png` with one frame per scene,
-and `comment.md`. It prints `comment:` and one `attach:` line per file to
-post. In screenshots mode it attaches the scene images instead.
-
-Exit 5 means the video can't fit the limit and stay readable. Ask the
-developer with AskUserQuestion: screenshots instead (`run.mjs screenshots`,
-then assemble again), or two videos on the same comment (`--parts 2`). Never
-post a video too blurry to read.
+Exit 5: the video can't fit the limit and stay readable. Ask the developer
+with AskUserQuestion: screenshots instead, or `--parts 2` for two videos on
+the comment.
 
 ## 5. Review
 
-Read `sheet.png` yourself first. Look for a scene that shows the wrong state,
-or a caption covering what it describes. Then show the developer:
+Read `sheet.png` first. Each frame should show its scene's criterion plainly,
+with the caption clear of what it describes; re-script any scene whose frame
+doesn't. Then `open "$OUT/demo.mp4"` for the developer and show `sheet.png`
+and the exact text of `comment.md`.
 
-- the video, opened with `open "$OUT/demo.mp4"` (or the screenshots),
-- `sheet.png`,
-- the exact contents of `comment.md`.
+Done when the developer has seen all three.
 
-Nothing is posted yet.
-
-## 6. Post, only after an explicit yes
+## 6. Post, after an explicit yes
 
 ```sh
 rmine issue comment <id> --file "$OUT/comment.md" --attach "$OUT/demo.mp4"
 ```
 
-Repeat `--attach` for each `attach:` line from step 4. Never pass the comment
-inline: the shell rewrites quotes and `$` before rmine sees them, and what
-lands on the ticket is no longer the text that was approved.
+Repeat `--attach` for each `attach:` line. Post the file that was shown: text
+passed inline gets rewritten by the shell.
 
-The rules are the same as `/spec-interview` step 6:
+The approval rules are `/spec-interview` step 6's:
 
-- **Ask with AskUserQuestion**, after the developer has seen the video and the
-  exact comment. Silence or "looks fine so far" is not a yes.
-- **A general instruction is not approval.** "Demo 123 and post it" authorises
-  the run, not a comment and video that didn't exist when it was said.
-- **A yes doesn't carry** to another ticket, a second comment, a re-recorded
-  take or a reworded comment. Change anything and ask again.
-- **If you can't ask, you can't post.** In a non-interactive run, stop after
-  step 5 and say it was not posted and why.
+- **Ask with AskUserQuestion** after the developer has seen the video and the
+  comment. Only a chosen yes counts.
+- **The yes covers this comment and these files.** "Demo 123 and post it"
+  authorises the run; the comment it produced still needs its own yes.
+- **A yes is single-use.** Another ticket, a second comment, a new take or a
+  reworded comment each need a fresh one.
+- **No prompt, no post.** In a non-interactive run, stop after step 5 and say
+  it wasn't posted and why.
 
-If the developer declines, tell them where the files are. They can post them
-themselves.
+If they decline, tell them where the files are.
 
 ## 7. Report
 
-Say what was posted and on which ticket, or that nothing was. The files stay in
-`$OUT`: `demo.mp4` and `demo-chapters.json` are what a later voice-over pass
-builds on.
+Say what was posted and where, or that nothing was. `demo.mp4` and
+`demo-chapters.json` stay in `$OUT` for a later voice-over pass.
