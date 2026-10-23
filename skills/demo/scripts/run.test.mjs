@@ -153,12 +153,12 @@ function pngSize(file) {
   return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
 }
 
-test('record renders a caption band per scene, as wide as the viewport', async () => {
+test('record renders a caption frame per scene around the viewport', async () => {
   const r = await run('record', CONTINUED);
   assert.equal(r.status, 0, r.stderr);
   const chapters = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
-  assert.deepEqual(chapters.map((c) => c.band), ['band-01.png', 'band-02.png']);
-  assert.deepEqual(pngSize(path.join(r.out, 'band-01.png')), [1280, 64]);
+  assert.deepEqual(chapters.map((c) => c.frame), ['frame-01.png', 'frame-02.png']);
+  assert.deepEqual(pngSize(path.join(r.out, 'frame-01.png')), [1360, 964]);
 });
 
 test('screenshots number each caption', async () => {

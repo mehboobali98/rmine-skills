@@ -39,7 +39,7 @@ unchanged, so what was rehearsed is what gets filmed.
 | `viewport` | Page size in CSS pixels. 1280x800 keeps text readable when the video plays scaled down |
 | `hide` | CSS selectors hidden while filming: dev toolbars, profilers, chat and help widgets. Only things unrelated to the feature |
 | `omitted` | Criteria the take can't show, each with the reason. The comment lists them as `Not shown: ...` |
-| `caption` | One line a PM would say, naming what to notice, in about 60 characters. It shows in a band under the video with the scene number and time, so it never covers the app |
+| `caption` | One line a PM would say, naming what to notice, in about 60 characters. It shows below the video, in a frame with the step, a progress bar and the time, so it never covers the app |
 | `criterion` | The acceptance criterion the scene proves; kept in the chapter file |
 | `start` | A path on the saved URL. Required on scene 1. A later scene without it carries on from where the previous one ended |
 | `steps` | What to do, in order |

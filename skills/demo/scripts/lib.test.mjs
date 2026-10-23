@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync, bandHtml,
+  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync, frameHtml, frameSize,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -125,18 +125,24 @@ test('ffmetadata writes one chapter per scene', () => {
   );
 });
 
-test('bandHtml shows the step, time and caption, escaped', () => {
-  const html = bandHtml({ n: 2, total: 5, time: '0:14', caption: 'Rows <b>& more</b>', width: 1280 });
-  assert.match(html, />2\/5</);
-  assert.match(html, />0:14</);
-  assert.match(html, /Rows &lt;b&gt;&amp; more&lt;\/b&gt;/);
-  assert.match(html, /width:1280px/);
-  assert.equal((html.match(/<i class="on">/g) || []).length, 2);
-  assert.equal((html.match(/<i/g) || []).length, 5);
+test('frameSize puts the video in a padded window above the caption', () => {
+  assert.deepEqual(frameSize({ width: 1280, height: 800 }), { width: 1360, height: 964, x: 40, y: 40 });
 });
 
-test('bandHtml leaves the time out for screenshots', () => {
-  assert.doesNotMatch(bandHtml({ n: 1, total: 2, time: null, caption: 'x', width: 800 }), /class="time"/);
+test('frameHtml shows the step, caption, subject and time, escaped', () => {
+  const html = frameHtml({
+    n: 2, total: 5, time: '0:14', length: '0:47', caption: 'Rows <b>& more</b>', subject: 'Racks', viewport: { width: 1280, height: 800 },
+  });
+  assert.match(html, />Step 2 of 5</);
+  assert.match(html, />0:14 \/ 0:47</);
+  assert.match(html, />Racks</);
+  assert.match(html, /Rows &lt;b&gt;&amp; more&lt;\/b&gt;/);
+  assert.equal((html.match(/<i class="(done|now)?">/g) || []).length, 5);
+  assert.equal((html.match(/<i class="done">/g) || []).length, 1);
+});
+
+test('frameHtml leaves the time out for screenshots', () => {
+  assert.doesNotMatch(frameHtml({ n: 1, total: 2, time: null, length: null, caption: 'x', subject: 's', viewport: { width: 800, height: 500 } }), /class="time"/);
 });
 
 test('sheetTime shows the end of a scene, where its check passed', () => {
