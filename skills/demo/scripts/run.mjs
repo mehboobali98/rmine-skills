@@ -2,11 +2,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { validateScript, syncTimes, findSync, isPasswordVisible, formatTime } from './lib.mjs';
+import {
+  validateScript, syncTimes, findSync, isPasswordVisible, formatTime, bandHtml, BAND_HEIGHT,
+} from './lib.mjs';
 
 const TIMEOUT_MS = 5000;
 const PACE = { warmUp: 500, lead: 1200, move: 1000, drag: 2000, after: 800, hold: 1800, typeDelay: 60 };
-const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
+const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|band-\d+\.png|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
 
 class SceneFailure extends Error {
   constructor(code, message) {
@@ -106,17 +108,11 @@ async function guardSignedIn(page) {
   }
 }
 
-async function setCaption(page, state, text, tag) {
-  state.caption = text;
-  state.tag = tag;
-  await page.evaluate(([t, g]) => window.__demo.caption(t, g), [text, tag]);
-}
-
 async function runScene(page, scene, ctx, stopAfter) {
-  const { base, filmed, state } = ctx;
+  const { base, filmed } = ctx;
   if (scene.start !== undefined) await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
   await guardSignedIn(page);
-  await setCaption(page, state, scene.caption, ctx.ready());
+  ctx.ready();
   if (filmed) await page.waitForTimeout(PACE.lead);
   const steps = stopAfter === undefined ? scene.steps || [] : (scene.steps || []).slice(0, stopAfter);
   for (const [i, step] of steps.entries()) {
@@ -179,7 +175,7 @@ async function main() {
 
   const filmed = args.mode === 'record';
   const videoDir = path.join(args.outDir, '.video');
-  const state = { caption: '', pointer: null, pointerHidden: args.mode === 'screenshots', hide: script.hide || [] };
+  const state = { pointer: null, pointerHidden: args.mode === 'screenshots', hide: script.hide || [] };
   const browser = await chromium.launch();
   const context = await browser.newContext({
     viewport: script.viewport,
@@ -206,10 +202,7 @@ async function main() {
     const n = i + 1;
     const last = n === scenes[scenes.length - 1][0] + 1;
     const stopAfter = last ? args.steps : undefined;
-    const ready = () => {
-      marks.push(Date.now());
-      return sceneTag(n, script.scenes.length, args.mode === 'screenshots' ? null : elapsedSeconds(marks));
-    };
+    const ready = () => marks.push(Date.now());
     try {
       await runScene(page, scene, { base, filmed, state, ready }, stopAfter);
       marks.push(Date.now());
@@ -238,7 +231,6 @@ async function main() {
 
   const video = page.video();
   await context.close();
-  await browser.close();
 
   if (filmed) {
     const raw = path.join(args.outDir, 'raw.webm');
@@ -246,7 +238,7 @@ async function main() {
       fs.renameSync(await video.path(), raw);
       try {
         const times = syncTimes({ marks, syncWallMs, syncVideoSec: findSync(raw) });
-        writeChapters(args.outDir, script, times);
+        await renderBands(browser, args.outDir, script, writeChapters(args.outDir, script, times));
       } catch (err) {
         fs.rmSync(raw, { force: true });
         failed = new SceneFailure(1, err.message);
@@ -256,8 +248,9 @@ async function main() {
     fs.rmSync(videoDir, { recursive: true, force: true });
     if (!failed) process.stdout.write(`video: ${raw}\n`);
   } else if (!failed && args.mode === 'screenshots') {
-    writeChapters(args.outDir, script, null);
+    await renderBands(browser, args.outDir, script, writeChapters(args.outDir, script, null));
   }
+  await browser.close();
   return failed ? failed.code : 0;
 }
 
@@ -279,11 +272,25 @@ function firstScene(script, scene) {
   return first;
 }
 
+async function renderBands(browser, outDir, script, chapters) {
+  const page = await browser.newPage({ viewport: { width: script.viewport.width, height: BAND_HEIGHT } });
+  for (const chapter of chapters) {
+    await page.setContent(bandHtml({
+      n: chapter.scene, total: chapters.length, time: chapter.time, caption: chapter.caption, width: script.viewport.width,
+    }));
+    await page.screenshot({ path: path.join(outDir, chapter.band) });
+  }
+  await page.close();
+}
+
 function writeChapters(outDir, script, times) {
+  const elapsed = (i) => elapsedSeconds(times.slice(0, i * 2 + 1).map((t) => t * 1000));
   const chapters = script.scenes.map((scene, i) => ({
     scene: i + 1,
     caption: scene.caption,
-    tag: sceneTag(i + 1, script.scenes.length, times ? elapsedSeconds(times.slice(0, i * 2 + 1).map((t) => t * 1000)) : null),
+    tag: sceneTag(i + 1, script.scenes.length, times ? elapsed(i) : null),
+    time: times ? formatTime(Math.round(elapsed(i) * 100) / 100) : null,
+    band: `band-${String(i + 1).padStart(2, '0')}.png`,
     criterion: scene.criterion || '',
     start: times ? times[i * 2] : null,
     end: times ? times[i * 2 + 1] : null,
@@ -291,6 +298,7 @@ function writeChapters(outDir, script, times) {
   }));
   fs.writeFileSync(path.join(outDir, 'chapters.json'), `${JSON.stringify(chapters, null, 2)}\n`);
   if (script.omitted?.length) fs.writeFileSync(path.join(outDir, 'omitted.json'), `${JSON.stringify(script.omitted, null, 2)}\n`);
+  return chapters;
 }
 
 process.exitCode = await main();

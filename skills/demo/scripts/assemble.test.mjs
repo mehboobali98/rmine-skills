@@ -63,6 +63,45 @@ test('video mode trims to the scenes and shifts the chapters', async () => {
   assert.match(r.stdout, /^comment: .*comment\.md$/m);
 });
 
+function withBands(dir, colours) {
+  const chapters = JSON.parse(fs.readFileSync(path.join(dir, 'chapters.json'), 'utf8'));
+  chapters.forEach((c, i) => {
+    c.band = `band-0${i + 1}.png`;
+    execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', `color=${colours[i]}:size=640x64`, '-frames:v', '1', path.join(dir, c.band)]);
+  });
+  fs.writeFileSync(path.join(dir, 'chapters.json'), JSON.stringify(chapters));
+}
+
+function bottomPixel(file, seconds) {
+  return [...execFileSync('ffmpeg', ['-v', 'error', '-ss', String(seconds), '-i', file, '-frames:v', '1',
+    '-vf', 'crop=8:8:iw/2:ih-30,scale=1:1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
+}
+
+test('each scene shows its caption band under the video', async () => {
+  const dir = videoDir(12, TWO_SCENES);
+  withBands(dir, ['red', 'blue']);
+  const r = await assemble(dir, ['--limit-mb', '5']);
+  assert.equal(r.status, 0, r.stderr);
+  const mp4 = path.join(dir, 'demo.mp4');
+  const height = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=height', '-of', 'csv=p=0', mp4]).toString());
+  assert.equal(height, 464);
+  const first = bottomPixel(mp4, 2);
+  const second = bottomPixel(mp4, 7);
+  assert.ok(first[0] > 180 && first[2] < 80, `scene 1 band ${first}`);
+  assert.ok(second[2] > 180 && second[0] < 80, `scene 2 band ${second}`);
+});
+
+test('screenshots get their caption band stacked underneath', async () => {
+  const dir = screenshotDir();
+  withBands(dir, ['red', 'blue']);
+  const r = await assemble(dir, ['--limit-mb', '5']);
+  assert.equal(r.status, 0, r.stderr);
+  const shots = r.stdout.match(/^attach: (.*)$/gm).map((l) => l.slice(8));
+  assert.equal(shots.length, 2);
+  const buf = fs.readFileSync(shots[0]);
+  assert.deepEqual([buf.readUInt32BE(16), buf.readUInt32BE(20)], [640, 464]);
+});
+
 test('gaps between scenes are cut out, and the chapters re-timed', async () => {
   const dir = videoDir(16, [
     { scene: 1, caption: 'One', start: 1, end: 5 },
