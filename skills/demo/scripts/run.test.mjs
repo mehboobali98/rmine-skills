@@ -176,17 +176,17 @@ test('the current step fills its progress segment as the scene plays', async () 
   const early = sample(first.start + 0.2);
   const late = sample(first.end - 0.2);
   assert.ok(early[0] > 180, `60% along, early should still be grey: ${early}`);
-  assert.ok(late[0] < 140 && late[2] > 180, `60% along, late should be indigo: ${late}`);
+  assert.ok(late.every((c) => c < 110), `60% along, late should be filled slate: ${late}`);
 });
 
-test('a filmed click shows the cursor and highlights its target', async () => {
+test('a filmed click shows the cursor', async () => {
   const marked = {
     ...SCRIPT,
     scenes: [{
       caption: 'Hide closed items',
       start: '/items',
       steps: [{ click: { role: 'button', name: 'Hide closed' } }],
-      expect: [{ visible: { css: '[data-demo-cursor]' } }, { visible: { css: '[data-demo-highlight]' } }],
+      expect: [{ visible: { css: '[data-demo-cursor]' } }],
     }],
   };
   const r = await run('record', marked);

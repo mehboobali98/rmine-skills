@@ -79,9 +79,9 @@ export function findSync(file) {
   return Math.round((light / fps) * 100) / 100;
 }
 
-const FRAME = { pad: 40, caption: 124, radius: 14, barTop: 30, barHeight: 3, barGap: 6 };
+const FRAME = { pad: 40, caption: 124, radius: 14, barTop: 30, barHeight: 4, barGap: 6 };
 
-export const PROGRESS = { track: '0xd6dce6', fill: '0x4f46e5' };
+export const PROGRESS = { track: '0xe2e8f0', fill: '0x334155' };
 
 /**
  * The finished frame's size, and where the video sits inside it.
@@ -128,7 +128,11 @@ export function frameHtml({ n, total, time, length, caption, subject, viewport }
     + `V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}`
     + `A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
   const bar = barGeometry(viewport, total, n);
-  const open = time ? ` M${bar.x} ${bar.y}H${bar.x + bar.width}V${bar.y + bar.height}H${bar.x}Z` : '';
+  const end = bar.height / 2;
+  const open = time
+    ? ` M${bar.x + end} ${bar.y}H${bar.x + bar.width - end}A${end} ${end} 0 0 1 ${bar.x + bar.width - end} ${bar.y + bar.height}`
+      + `H${bar.x + end}A${end} ${end} 0 0 1 ${bar.x + end} ${bar.y}Z`
+    : '';
   const bars = Array.from({ length: total }, (_, i) => {
     if (i < n - 1) return '<i class="done"></i>';
     return i === n - 1 ? '<i class="now"></i>' : '<i class=""></i>';
@@ -141,11 +145,11 @@ background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f1f4f9 55%,#e6ebf2 100
 .window{position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;
 box-shadow:0 0 0 1px rgba(15,23,42,.08),0 24px 60px -12px rgba(15,23,42,.28),0 8px 18px -8px rgba(15,23,42,.18)}
 .bars{position:absolute;left:${x + 2}px;right:${x + 2}px;top:${bar.y}px;display:flex;gap:${FRAME.barGap}px}
-.bars i{flex:1;height:${FRAME.barHeight}px;border-radius:2px;background:#d6dce6}.bars i.done{background:#4f46e5}
-.bars i.now{background:${time ? 'transparent' : '#818cf8'}}
+.bars i{flex:1;height:${FRAME.barHeight}px;border-radius:${FRAME.barHeight / 2}px;background:#e2e8f0}.bars i.done{background:#334155}
+.bars i.now{background:${time ? 'transparent' : '#334155'}}
 .cap{position:absolute;left:${x + 2}px;right:${x + 2}px;top:${y + h + 46}px;display:flex;align-items:flex-end;gap:32px}
 .left{flex:1;min-width:0}
-.step{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#4f46e5;margin-bottom:6px}
+.step{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#64748b;margin-bottom:6px}
 .text{font-size:30px;font-weight:650;letter-spacing:-.01em;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .right{text-align:right;color:#64748b;font-size:14px;font-weight:500;line-height:1.6;white-space:nowrap}
 .time{font-variant-numeric:tabular-nums;color:#0f172a;font-weight:600}

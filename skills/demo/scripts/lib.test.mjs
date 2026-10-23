@@ -142,13 +142,13 @@ test('frameHtml shows the step, caption, subject and time, escaped', () => {
 });
 
 test('barGeometry places each step segment under the window', () => {
-  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 1), { x: 42, y: 870, width: 250, height: 3 });
-  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 2), { x: 298, y: 870, width: 250, height: 3 });
+  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 1), { x: 42, y: 870, width: 250, height: 4 });
+  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 2), { x: 298, y: 870, width: 250, height: 4 });
 });
 
 test('frameHtml leaves the current segment open for the live fill', () => {
   const html = frameHtml({ n: 2, total: 5, time: '0:14', length: '0:47', caption: 'c', subject: 's', viewport: { width: 1280, height: 800 } });
-  assert.match(html, /M298 870H548V873H298Z/);
+  assert.match(html, /M300 870H546A2 2 0 0 1 546 874H300A2 2 0 0 1 300 870Z/);
 });
 
 test('frameHtml leaves the time out for screenshots', () => {
