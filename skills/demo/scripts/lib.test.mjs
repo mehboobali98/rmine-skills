@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
-  formatTime, renderComment, planEncode, videoTimes, validateScript, sheetTime, ffmetadata,
+  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -94,9 +98,23 @@ test('planEncode refuses below the floor', () => {
   assert.deepEqual(planEncode({ durationSec: 600, limitBytes: 2 * MB }), { tooBig: true, neededKbps: 150 });
 });
 
-test('videoTimes counts back from the end', () => {
-  assert.deepEqual(videoTimes({ marks: [4000, 6000], closeMs: 9000, durationSec: 7 }), [2, 4]);
-  assert.throws(() => videoTimes({ marks: [1000, 4000], closeMs: 9000, durationSec: 6 }), /started late/);
+test('syncTimes places marks relative to the sync frame', () => {
+  assert.deepEqual(syncTimes({ marks: [10500, 12250], syncWallMs: 10000, syncVideoSec: 0.8 }), [1.3, 3.05]);
+  assert.throws(() => syncTimes({ marks: [9000], syncWallMs: 10000, syncVideoSec: 0.5 }), /started late/);
+});
+
+test('findSync finds the switch from black to white', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'demo-sync-')), 'sync.webm');
+  execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=black:size=320x200:rate=25:duration=1.2',
+    '-f', 'lavfi', '-i', 'color=white:size=320x200:rate=25:duration=2', '-filter_complex', '[0][1]concat=n=2:v=1',
+    '-c:v', 'libvpx', file]);
+  assert.ok(Math.abs(findSync(file) - 1.2) <= 0.04, `found ${findSync(file)}`);
+});
+
+test('findSync refuses a video without the switch', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'demo-sync-')), 'white.webm');
+  execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=white:size=320x200:rate=25:duration=2', '-c:v', 'libvpx', file]);
+  assert.throws(() => findSync(file), /sync/);
 });
 
 test('ffmetadata writes one chapter per scene', () => {
