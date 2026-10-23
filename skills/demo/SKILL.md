@@ -78,9 +78,9 @@ when every scene ends in one static state.
 Read `references/scene-script.md` before writing `$OUT/scenes.json`: the
 format, and what makes a take worth the watchers' time.
 
-Done when the developer has approved the scene list and the format with
-AskUserQuestion, and any criterion that can't be filmed is in `omitted` with
-its reason.
+Done when the developer has approved the scene list, in order and with each
+scene's reason for its place, and the format with AskUserQuestion, and any
+criterion that can't be filmed is in `omitted` with its reason.
 
 ## 3. Rehearse, then record
 
