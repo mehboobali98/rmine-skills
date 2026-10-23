@@ -10,3 +10,8 @@
 # notice.
 /estimate-*.md
 /estimates/
+
+# /demo's Playwright install. The exact version pin in package.json is the
+# lock; installs land in the plugin folder on each user's machine.
+node_modules/
+package-lock.json
