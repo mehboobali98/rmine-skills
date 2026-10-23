@@ -269,11 +269,20 @@ test('chapter times line up with the video', async () => {
   assert.equal(r.status, 0, r.stderr);
   const [red, blue] = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
   const raw = path.join(r.out, 'raw.webm');
-  const before = pixelAt(raw, blue.start - 0.3);
-  const after = pixelAt(raw, blue.end - 0.3);
-  assert.ok(before[0] > 200 && before[2] < 60, `just before scene 2: ${before}`);
-  assert.ok(after[2] > 200 && after[0] < 60, `end of scene 2: ${after}`);
+  const endOfRed = pixelAt(raw, red.end - 0.3);
+  const startOfBlue = pixelAt(raw, blue.start + 0.15);
+  assert.ok(endOfRed[0] > 200 && endOfRed[2] < 60, `end of scene 1: ${endOfRed}`);
+  assert.ok(startOfBlue[2] > 200 && startOfBlue[0] < 60, `start of scene 2: ${startOfBlue}`);
   assert.ok(red.start >= 0);
+});
+
+test('a scene starts once its page has finished loading its data', async () => {
+  const late = { ...SCRIPT, scenes: [{ caption: 'Late page', start: '/late-color/00ff00', expect: [{ url: 'late-color' }] }] };
+  const r = await run('record', late);
+  assert.equal(r.status, 0, r.stderr);
+  const [chapter] = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
+  const first = pixelAt(path.join(r.out, 'raw.webm'), chapter.start + 0.15);
+  assert.ok(first[1] > 200 && first[0] < 60, `first frame of the scene: ${first}`);
 });
 
 test('a drag keeps its pace on a page that is slow to handle mouse moves', async () => {

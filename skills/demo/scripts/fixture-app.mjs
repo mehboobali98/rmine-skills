@@ -67,6 +67,15 @@ export async function startFixture() {
       res.end();
       return;
     }
+    if (route === '/late-data') {
+      setTimeout(() => res.end('ok'), 1200);
+      return;
+    }
+    if (route.startsWith('/late-color/')) {
+      res.end(`<!doctype html><html><body style="margin:0;height:100vh;background:#fff">
+        <script>fetch('/late-data').then(() => { document.body.style.background = '#${route.slice(12)}'; });</script></body></html>`);
+      return;
+    }
     if (route.startsWith('/color/')) {
       res.end(`<!doctype html><html><body style="margin:0;height:100vh;background:#${route.slice(7)}"></body></html>`);
       return;

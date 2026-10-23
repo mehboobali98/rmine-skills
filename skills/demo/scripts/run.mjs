@@ -7,6 +7,7 @@ import {
 } from './lib.mjs';
 
 const TIMEOUT_MS = 5000;
+const SETTLE_MS = 10000;
 const PACE = { warmUp: 500, lead: 1200, move: 1000, drag: 2000, after: 800, hold: 1800, typeDelay: 60 };
 const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|frame-\d+\.png|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
 
@@ -104,6 +105,10 @@ async function runExpect(page, item) {
   return page.waitForURL((u) => u.href.includes(item.url), { timeout: TIMEOUT_MS, waitUntil: 'commit' });
 }
 
+async function settle(page) {
+  await page.waitForLoadState('networkidle', { timeout: SETTLE_MS }).catch(() => {});
+}
+
 async function guardSignedIn(page) {
   if (await isPasswordVisible(page)) {
     throw new SceneFailure(4, 'the app is showing a sign-in page. Run session.mjs signin again; nothing was recorded.');
@@ -112,7 +117,10 @@ async function guardSignedIn(page) {
 
 async function runScene(page, scene, ctx, stopAfter) {
   const { base, filmed } = ctx;
-  if (scene.start !== undefined) await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
+  if (scene.start !== undefined) {
+    await page.goto(base + scene.start, { waitUntil: 'domcontentloaded' });
+    await settle(page);
+  }
   await guardSignedIn(page);
   ctx.ready();
   if (filmed) await page.waitForTimeout(PACE.lead);
