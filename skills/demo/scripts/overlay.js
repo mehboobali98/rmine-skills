@@ -1,7 +1,7 @@
 (() => {
   if (window.__demo) return;
   const ready = (fn) => (document.body ? fn() : document.addEventListener('DOMContentLoaded', fn, { once: true }));
-  const ACCENT = '79,70,229';
+  const INK = '15,23,42';
   let cursor;
 
   const layer = (css) => {
@@ -21,17 +21,6 @@
     hidePointer() {
       ready(() => { cursor.style.display = 'none'; });
     },
-    highlight({ x, y, width, height }) {
-      ready(() => {
-        const ring = layer(`left:${x - 6}px;top:${y - 6}px;width:${width + 12}px;height:${height + 12}px;border-radius:10px;`
-          + `box-shadow:0 0 0 2px rgba(${ACCENT},.9),0 0 0 6px rgba(${ACCENT},.18),0 8px 24px rgba(${ACCENT},.25);`
-          + 'opacity:0;transform:scale(1.04);transition:opacity .25s ease,transform .25s ease');
-        ring.dataset.demoHighlight = '';
-        requestAnimationFrame(() => { ring.style.opacity = '1'; ring.style.transform = 'scale(1)'; });
-        setTimeout(() => { ring.style.transition = 'opacity .5s ease'; ring.style.opacity = '0'; }, 1500);
-        setTimeout(() => ring.remove(), 2100);
-      });
-    },
   };
   window.__demo = api;
 
@@ -43,7 +32,7 @@
     document.addEventListener('mousemove', (e) => api.pointer(e.clientX, e.clientY), true);
     document.addEventListener('mousedown', (e) => {
       const ripple = layer(`left:${e.clientX - 18}px;top:${e.clientY - 18}px;width:36px;height:36px;border-radius:50%;`
-        + `background:rgba(${ACCENT},.28);border:2px solid rgba(${ACCENT},.7);transform:scale(.3);opacity:1;`
+        + `background:rgba(${INK},.12);border:2px solid rgba(${INK},.45);transform:scale(.3);opacity:1;`
         + 'transition:transform .45s cubic-bezier(.2,.7,.3,1),opacity .45s ease');
       requestAnimationFrame(() => { ripple.style.transform = 'scale(1.4)'; ripple.style.opacity = '0'; });
       setTimeout(() => ripple.remove(), 500);
