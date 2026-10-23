@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  planEncode, renderComment, sheetTime, ffmetadata, frameSize,
+  planEncode, renderComment, sheetTime, ffmetadata, frameSize, barGeometry, PROGRESS,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -29,14 +29,31 @@ function framesOf(segments, outDir) {
   return segments.every((s) => s.frame) ? segments.map((s) => path.join(outDir, s.frame)) : [];
 }
 
-function framePad(file) {
-  const [w, h] = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file])
+function viewportOf(file) {
+  const [width, height] = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file])
     .toString().trim().split(',').map(Number);
-  const f = frameSize({ width: w, height: h });
-  return `pad=${f.width}:${f.height}:${f.x}:${f.y}:color=0xf1f4f9`;
+  return { width, height };
 }
 
-function joinSegments(segments, frames, pad) {
+function framePad(file) {
+  const f = frameSize(viewportOf(file));
+  return `pad=${f.width}:${f.height}:${f.x}:${f.y}:color=${PROGRESS.track}`;
+}
+
+function progressFills(segments, viewport, total) {
+  let elapsed = 0;
+  return segments.map((s, i) => {
+    const from = elapsed;
+    const span = s.end - s.start;
+    elapsed += span;
+    const bar = barGeometry(viewport, total, s.scene);
+    const x = `${bar.x - bar.width}+${bar.width}*min(1\\,max(0\\,(t-${from.toFixed(3)})/${span.toFixed(3)}))`;
+    return `color=c=${PROGRESS.fill}:s=${bar.width}x${bar.height}:r=25[fill${i}];`
+      + `[${i === 0 ? 'padded' : `p${i - 1}`}][fill${i}]overlay=x='${x}':y=${bar.y}:shortest=1:enable='between(t,${from.toFixed(3)},${elapsed.toFixed(3)})'[p${i}]`;
+  });
+}
+
+function joinSegments(segments, frames, pad, viewport, total) {
   const trims = segments.map((s, i) => `[0:v]trim=start=${s.start}:end=${s.end},setpts=PTS-STARTPTS[s${i}]`);
   const inputs = segments.map((_, i) => `[s${i}]`).join('');
   const joined = `${trims.join(';')};${inputs}concat=n=${segments.length}:v=1:a=0`;
@@ -46,16 +63,18 @@ function joinSegments(segments, frames, pad) {
     const from = elapsed;
     elapsed += s.end - s.start;
     const last = i === segments.length - 1 ? '[out]' : `[b${i}]`;
-    return `[${i === 0 ? 'padded' : `b${i - 1}`}][${i + 2}:v]overlay=0:0:enable='between(t,${from.toFixed(3)},${elapsed.toFixed(3)})'${last}`;
+    const under = i === 0 ? `p${segments.length - 1}` : `b${i - 1}`;
+    return `[${under}][${i + 2}:v]overlay=0:0:enable='between(t,${from.toFixed(3)},${elapsed.toFixed(3)})'${last}`;
   });
-  return `${joined}[cat];[cat]${pad}[padded];${overlays.join(';')}`;
+  const fills = progressFills(segments, viewport, total);
+  return `${joined}[cat];[cat]${pad}[padded];${fills.join(';')};${overlays.join(';')}`;
 }
 
-function encode(raw, segments, out, rate, meta, frames) {
+function encode(raw, segments, out, rate, meta, frames, total) {
   const quality = rate
     ? ['-b:v', `${rate}k`, '-maxrate', `${rate}k`, '-bufsize', `${rate * 2}k`]
     : ['-crf', String(CRF)];
-  ffmpeg(['-i', raw, '-i', meta, ...frames.flatMap((b) => ['-i', b]), '-filter_complex', joinSegments(segments, frames, framePad(raw)),
+  ffmpeg(['-i', raw, '-i', meta, ...frames.flatMap((b) => ['-i', b]), '-filter_complex', joinSegments(segments, frames, framePad(raw), viewportOf(raw), total),
     '-map', '[out]', '-map_chapters', '1',
     '-c:v', 'libx264', '-preset', 'medium', ...quality,
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out]);
@@ -64,7 +83,7 @@ function encode(raw, segments, out, rate, meta, frames) {
 
 function encodeToFit(raw, segments, out, opts, meta) {
   const frames = framesOf(segments, opts.outDir);
-  if (encode(raw, segments, out, null, meta, frames) <= opts.limitBytes) return null;
+  if (encode(raw, segments, out, null, meta, frames, opts.total) <= opts.limitBytes) return null;
   const durationSec = segments.reduce((sum, s) => sum + s.end - s.start, 0);
   const plan = planEncode({ durationSec, limitBytes: opts.limitBytes });
   if (plan.tooBig) {
@@ -72,7 +91,7 @@ function encodeToFit(raw, segments, out, opts, meta) {
     return `${Math.round(durationSec)} s of video needs at least ${plan.neededKbps} kbps to stay readable, which does not fit ${opts.limitMb} MB.`;
   }
   for (const rate of [plan.bitrateKbps, Math.floor(plan.bitrateKbps * RETRY_FACTOR)]) {
-    if (encode(raw, segments, out, rate, meta, frames) <= opts.limitBytes) {
+    if (encode(raw, segments, out, rate, meta, frames, opts.total) <= opts.limitBytes) {
       process.stdout.write(`Re-encoded at ${rate} kbps to fit ${opts.limitMb} MB\n`);
       return null;
     }
@@ -126,7 +145,7 @@ function assembleVideo(opts, chapters) {
     });
     const meta = path.join(opts.outDir, `.chapters-${i + 1}.txt`);
     fs.writeFileSync(meta, ffmetadata(groupChapters));
-    const problem = encodeToFit(raw, group, file, opts, meta);
+    const problem = encodeToFit(raw, group, file, { ...opts, total: chapters.length }, meta);
     fs.rmSync(meta);
     if (problem) {
       files.forEach((f) => fs.rmSync(f, { force: true }));
