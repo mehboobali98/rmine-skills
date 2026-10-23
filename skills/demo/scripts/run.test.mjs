@@ -206,6 +206,22 @@ test('hide keeps unrelated overlays out of the take', async () => {
   assert.equal(r.status, 0, r.stderr);
 });
 
+test('a drag keeps its pace on a page that is slow to handle mouse moves', async () => {
+  const heavy = {
+    ...SCRIPT,
+    scenes: [{
+      caption: 'Wire a socket on a slow page',
+      start: '/board?heavy=1',
+      steps: [{ drag: { css: '#handle' }, to: { css: '#socket' } }],
+      expect: [{ text: 'Wired' }],
+    }],
+  };
+  const r = await run('record', heavy);
+  assert.equal(r.status, 0, r.stderr);
+  const [chapter] = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
+  assert.ok(chapter.end - chapter.start < 10, `scene took ${chapter.end - chapter.start}s`);
+});
+
 test('a url check does not wait for slow assets', async () => {
   const slow = structuredClone(SCRIPT);
   slow.scenes = [{ caption: 'Slow page', start: '/items?slow=1', expect: [{ url: '/items' }] }];

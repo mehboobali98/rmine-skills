@@ -72,7 +72,8 @@ export async function startFixture() {
       res.end();
       return;
     }
-    const slow = req.url.includes('slow=1') ? '<img src="/slow-asset">' : '';
+    const slow = (req.url.includes('slow=1') ? '<img src="/slow-asset">' : '')
+      + (req.url.includes('heavy=1') ? '<script>document.addEventListener("mousemove", () => { const t = Date.now(); while (Date.now() - t < 150); });</script>' : '');
     res.writeHead(PAGES[route] ? 200 : 404, { 'content-type': 'text/html' });
     res.end(html((PAGES[route] || '<h1>Not found</h1>') + slow));
   });

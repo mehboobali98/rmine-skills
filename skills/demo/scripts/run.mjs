@@ -39,12 +39,13 @@ function describe(step) {
 
 async function glide(page, state, x, y, duration = PACE.move) {
   const [fromX, fromY] = state.pointer || [x, y - 120];
-  const frames = Math.round(duration / 40);
-  for (let i = 1; i <= frames; i += 1) {
-    const t = i / frames;
+  const began = Date.now();
+  for (;;) {
+    const t = Math.min(1, (Date.now() - began) / duration);
     const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
     await page.mouse.move(fromX + (x - fromX) * ease, fromY + (y - fromY) * ease);
-    await page.waitForTimeout(duration / frames);
+    if (t === 1) break;
+    await page.waitForTimeout(40);
   }
   state.pointer = [x, y];
 }
