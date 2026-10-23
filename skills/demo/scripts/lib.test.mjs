@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync, frameHtml, frameSize,
+  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync, frameHtml, frameSize, barGeometry,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -139,6 +139,16 @@ test('frameHtml shows the step, caption, subject and time, escaped', () => {
   assert.match(html, /Rows &lt;b&gt;&amp; more&lt;\/b&gt;/);
   assert.equal((html.match(/<i class="(done|now)?">/g) || []).length, 5);
   assert.equal((html.match(/<i class="done">/g) || []).length, 1);
+});
+
+test('barGeometry places each step segment under the window', () => {
+  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 1), { x: 42, y: 870, width: 250, height: 3 });
+  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 2), { x: 298, y: 870, width: 250, height: 3 });
+});
+
+test('frameHtml leaves the current segment open for the live fill', () => {
+  const html = frameHtml({ n: 2, total: 5, time: '0:14', length: '0:47', caption: 'c', subject: 's', viewport: { width: 1280, height: 800 } });
+  assert.match(html, /M298 870H548V873H298Z/);
 });
 
 test('frameHtml leaves the time out for screenshots', () => {

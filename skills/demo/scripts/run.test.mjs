@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { startFixture, sessionWithCookie, VALID_COOKIE } from './fixture-app.mjs';
-import { formatTime } from './lib.mjs';
+import { formatTime, barGeometry } from './lib.mjs';
 
 const RUN = new URL('./run.mjs', import.meta.url).pathname;
 
@@ -159,6 +159,24 @@ test('record renders a caption frame per scene around the viewport', async () =>
   const chapters = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
   assert.deepEqual(chapters.map((c) => c.frame), ['frame-01.png', 'frame-02.png']);
   assert.deepEqual(pngSize(path.join(r.out, 'frame-01.png')), [1360, 964]);
+});
+
+test('the current step fills its progress segment as the scene plays', async () => {
+  const r = await run('record', CONTINUED);
+  assert.equal(r.status, 0, r.stderr);
+  const done = await new Promise((resolve) => {
+    execFile(process.execPath, [new URL('./assemble.mjs', import.meta.url).pathname, r.out, '--subject', 's', '--branch', 'b',
+      '--sha', 'abc1234', '--limit-mb', '5'], (err, stdout, stderr) => resolve({ status: err ? err.code : 0, stderr }));
+  });
+  assert.equal(done.status, 0, done.stderr);
+  const [first] = JSON.parse(fs.readFileSync(path.join(r.out, 'demo-chapters.json'), 'utf8'));
+  const bar = barGeometry(SCRIPT.viewport, 2, 1);
+  const sample = (t) => [...execFileSync('ffmpeg', ['-v', 'error', '-ss', String(t), '-i', path.join(r.out, 'demo.mp4'), '-frames:v', '1',
+    '-vf', `crop=4:2:${bar.x + Math.round(bar.width * 0.6)}:${bar.y},scale=1:1`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
+  const early = sample(first.start + 0.2);
+  const late = sample(first.end - 0.2);
+  assert.ok(early[0] > 180, `60% along, early should still be grey: ${early}`);
+  assert.ok(late[0] < 140 && late[2] > 180, `60% along, late should be indigo: ${late}`);
 });
 
 test('screenshots number each caption', async () => {
