@@ -179,6 +179,20 @@ test('the current step fills its progress segment as the scene plays', async () 
   assert.ok(late[0] < 140 && late[2] > 180, `60% along, late should be indigo: ${late}`);
 });
 
+test('a filmed click shows the cursor and highlights its target', async () => {
+  const marked = {
+    ...SCRIPT,
+    scenes: [{
+      caption: 'Hide closed items',
+      start: '/items',
+      steps: [{ click: { role: 'button', name: 'Hide closed' } }],
+      expect: [{ visible: { css: '[data-demo-cursor]' } }, { visible: { css: '[data-demo-highlight]' } }],
+    }],
+  };
+  const r = await run('record', marked);
+  assert.equal(r.status, 0, r.stderr);
+});
+
 test('screenshots number each caption', async () => {
   const r = await run('screenshots', { ...CONTINUED, mode: 'screenshots' });
   assert.equal(r.status, 0, r.stderr);

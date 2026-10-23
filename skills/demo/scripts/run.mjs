@@ -62,6 +62,7 @@ async function drag(page, source, target, { filmed, state }) {
   if (!filmed) await page.mouse.move(fromX, fromY);
   await page.mouse.down();
   const [toX, toY] = await centre(target);
+  if (filmed) await page.evaluate((b) => window.__demo.highlight(b), await target.boundingBox());
   if (filmed) await glide(page, state, toX, toY, PACE.drag);
   else await page.mouse.move(toX, toY, { steps: 10 });
   await page.mouse.up();
@@ -80,6 +81,7 @@ async function runStep(page, step, ctx) {
     await target.scrollIntoViewIfNeeded();
     const box = await target.boundingBox();
     await glide(page, state, box.x + box.width / 2, box.y + box.height / 2);
+    await page.evaluate((b) => window.__demo.highlight(b), box);
   }
   if (verb === 'drag') return drag(page, target, locate(page, step.to), ctx);
   if (verb === 'click') return target.click({ timeout: TIMEOUT_MS });
