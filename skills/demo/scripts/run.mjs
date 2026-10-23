@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { validateScript, videoTimes, isPasswordVisible, formatTime } from './lib.mjs';
+import { validateScript, syncTimes, findSync, isPasswordVisible, formatTime } from './lib.mjs';
 
 const TIMEOUT_MS = 5000;
 const PACE = { warmUp: 500, lead: 1200, move: 1000, drag: 2000, after: 800, hold: 1800, typeDelay: 60 };
@@ -153,10 +152,6 @@ function clearOutputs(outDir) {
   fs.rmSync(path.join(outDir, '.video'), { recursive: true, force: true });
 }
 
-function videoDuration(file) {
-  return Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString());
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!['rehearse', 'record', 'screenshots'].includes(args.mode) || !args.outDir) {
@@ -195,8 +190,12 @@ async function main() {
   await context.addInitScript({ path: new URL('./overlay.js', import.meta.url).pathname });
   const page = await context.newPage();
   page.setDefaultTimeout(60000);
+  let syncWallMs = null;
   if (filmed) {
-    await page.setContent('<body style="background:#fff">');
+    await page.setContent('<body style="margin:0;height:100vh;background:#000">');
+    await page.waitForTimeout(PACE.warmUp);
+    await page.evaluate(() => { document.body.style.background = '#fff'; });
+    syncWallMs = Date.now();
     await page.waitForTimeout(PACE.warmUp);
   }
 
@@ -238,7 +237,6 @@ async function main() {
   }
 
   const video = page.video();
-  const closeMs = Date.now();
   await context.close();
   await browser.close();
 
@@ -247,7 +245,7 @@ async function main() {
     if (!failed) {
       fs.renameSync(await video.path(), raw);
       try {
-        const times = videoTimes({ marks, closeMs, durationSec: videoDuration(raw) });
+        const times = syncTimes({ marks, syncWallMs, syncVideoSec: findSync(raw) });
         writeChapters(args.outDir, script, times);
       } catch (err) {
         fs.rmSync(raw, { force: true });

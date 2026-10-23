@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -204,6 +204,31 @@ test('hide keeps unrelated overlays out of the take', async () => {
   const hidden = { ...CONTINUED, hide: ['#count'], scenes: [{ caption: 'List without its counter', start: '/items', expect: [{ hidden: { css: '#count' } }] }] };
   const r = await run('rehearse', hidden);
   assert.equal(r.status, 0, r.stderr);
+});
+
+function pixelAt(file, seconds) {
+  const out = execFileSync('ffmpeg', ['-v', 'error', '-ss', String(seconds), '-i', file, '-frames:v', '1',
+    '-vf', 'crop=8:8:iw/2:ih/2-100,scale=1:1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+  return [...out];
+}
+
+test('chapter times line up with the video', async () => {
+  const colours = {
+    ...SCRIPT,
+    scenes: [
+      { caption: 'Red', start: '/color/ff0000', expect: [{ url: 'ff0000' }] },
+      { caption: 'Blue', start: '/color/0000ff', expect: [{ url: '0000ff' }] },
+    ],
+  };
+  const r = await run('record', colours);
+  assert.equal(r.status, 0, r.stderr);
+  const [red, blue] = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
+  const raw = path.join(r.out, 'raw.webm');
+  const before = pixelAt(raw, blue.start - 0.3);
+  const after = pixelAt(raw, blue.end - 0.3);
+  assert.ok(before[0] > 200 && before[2] < 60, `just before scene 2: ${before}`);
+  assert.ok(after[2] > 200 && after[0] < 60, `end of scene 2: ${after}`);
+  assert.ok(red.start >= 0);
 });
 
 test('a drag keeps its pace on a page that is slow to handle mouse moves', async () => {

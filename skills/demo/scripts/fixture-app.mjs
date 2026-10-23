@@ -67,6 +67,10 @@ export async function startFixture() {
       res.end();
       return;
     }
+    if (route.startsWith('/color/')) {
+      res.end(`<!doctype html><html><body style="margin:0;height:100vh;background:#${route.slice(7)}"></body></html>`);
+      return;
+    }
     if (route === '/') {
       res.writeHead(302, { location: '/items' });
       res.end();

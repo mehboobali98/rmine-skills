@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 const LOCATOR_KEYS = ['role', 'label', 'text', 'placeholder', 'testId', 'css'];
 const LOCATOR_STEPS = ['click', 'hover', 'fill', 'select', 'drag'];
 const NEEDS_VALUE = ['fill', 'select'];
@@ -49,16 +50,33 @@ export function planEncode({ durationSec, limitBytes }) {
 }
 
 /**
- * Each wall-clock mark's time in the video, counted back from the context close.
- * @param {{marks: number[], closeMs: number, durationSec: number}} input
+ * Each wall-clock mark's time in the video, measured from the sync frame.
+ * @param {{marks: number[], syncWallMs: number, syncVideoSec: number}} input
  * @returns {number[]} seconds from the start of the video
  */
-export function videoTimes({ marks, closeMs, durationSec }) {
-  const times = marks.map((m) => Math.round((durationSec - (closeMs - m) / 1000) * 100) / 100);
+export function syncTimes({ marks, syncWallMs, syncVideoSec }) {
+  const times = marks.map((m) => Math.round((syncVideoSec + (m - syncWallMs) / 1000) * 100) / 100);
   if (times.length && times[0] < 0) {
     throw new Error('The recording started late and missed the start of scene 1. Run it again.');
   }
   return times;
+}
+
+/**
+ * Seconds into the video where the warm-up switches from black to white.
+ * @param {string} file
+ * @returns {number}
+ */
+export function findSync(file) {
+  const rate = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate',
+    '-of', 'csv=p=0', file]).toString().trim().split('/').map(Number);
+  const fps = rate[0] / (rate[1] || 1);
+  const luma = execFileSync('ffmpeg', ['-v', 'error', '-t', '10', '-i', file, '-vf', 'crop=8:8:iw/2:ih/2,scale=1:1,format=gray',
+    '-f', 'rawvideo', '-']);
+  const dark = luma.findIndex((v) => v < 64);
+  const light = dark < 0 ? -1 : luma.findIndex((v, i) => i > dark && v > 192);
+  if (light < 0) throw new Error('No sync frame found in the recording. Run it again.');
+  return Math.round((light / fps) * 100) / 100;
 }
 
 /**
