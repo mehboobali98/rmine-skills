@@ -79,6 +79,28 @@ export function findSync(file) {
   return Math.round((light / fps) * 100) / 100;
 }
 
+export const BAND_HEIGHT = 64;
+
+/**
+ * HTML for one scene's caption band: step, time (video only), caption and progress.
+ * @param {{n: number, total: number, time: string|null, caption: string, width: number}} band
+ * @returns {string}
+ */
+export function bandHtml({ n, total, time, caption, width }) {
+  const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const dots = Array.from({ length: total }, (_, i) => (i < n ? '<i class="on"></i>' : '<i></i>')).join('');
+  return `<!doctype html><html><head><style>
+html,body{margin:0;background:#0f1115}
+.band{box-sizing:border-box;width:${width}px;height:${BAND_HEIGHT}px;display:flex;align-items:center;gap:16px;padding:0 28px;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#f5f6f8;border-top:1px solid #23262d}
+.step{font-weight:600;font-size:13px;letter-spacing:.06em;color:#0f1115;background:#7dd3fc;border-radius:6px;padding:6px 9px}
+.time{font-weight:500;font-size:15px;color:#8b919c;font-variant-numeric:tabular-nums;min-width:38px}
+.text{font-weight:500;font-size:20px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dots{margin-left:auto;display:flex;gap:6px}.dots i{width:22px;height:4px;border-radius:2px;background:#2b2f37}.dots i.on{background:#7dd3fc}
+</style></head><body><div class="band"><span class="step">${n}/${total}</span>${time ? `<span class="time">${time}</span>` : ''}
+<span class="text">${escape(caption)}</span><span class="dots">${dots}</span></div></body></html>`;
+}
+
 /**
  * An ffmpeg FFMETADATA file with one chapter per scene, so players list the chapters.
  * @param {{start: number, end: number, caption: string}[]} chapters

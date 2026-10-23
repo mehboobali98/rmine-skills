@@ -148,6 +148,19 @@ test('record numbers each caption and shows its chapter time', async () => {
   assert.deepEqual(chapters.map((c) => c.tag), ['1/2 · 0:00', `2/2 · ${formatTime(chapters[1].start - chapters[0].start)}`]);
 });
 
+function pngSize(file) {
+  const buf = fs.readFileSync(file);
+  return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+}
+
+test('record renders a caption band per scene, as wide as the viewport', async () => {
+  const r = await run('record', CONTINUED);
+  assert.equal(r.status, 0, r.stderr);
+  const chapters = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
+  assert.deepEqual(chapters.map((c) => c.band), ['band-01.png', 'band-02.png']);
+  assert.deepEqual(pngSize(path.join(r.out, 'band-01.png')), [1280, 64]);
+});
+
 test('screenshots number each caption', async () => {
   const r = await run('screenshots', { ...CONTINUED, mode: 'screenshots' });
   assert.equal(r.status, 0, r.stderr);

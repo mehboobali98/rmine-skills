@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync,
+  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync, bandHtml,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -123,6 +123,20 @@ test('ffmetadata writes one chapter per scene', () => {
     ';FFMETADATA1\n\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=4500\ntitle=One\n\n'
       + '[CHAPTER]\nTIMEBASE=1/1000\nSTART=4500\nEND=10000\ntitle=Two \\= two\n',
   );
+});
+
+test('bandHtml shows the step, time and caption, escaped', () => {
+  const html = bandHtml({ n: 2, total: 5, time: '0:14', caption: 'Rows <b>& more</b>', width: 1280 });
+  assert.match(html, />2\/5</);
+  assert.match(html, />0:14</);
+  assert.match(html, /Rows &lt;b&gt;&amp; more&lt;\/b&gt;/);
+  assert.match(html, /width:1280px/);
+  assert.equal((html.match(/<i class="on">/g) || []).length, 2);
+  assert.equal((html.match(/<i/g) || []).length, 5);
+});
+
+test('bandHtml leaves the time out for screenshots', () => {
+  assert.doesNotMatch(bandHtml({ n: 1, total: 2, time: null, caption: 'x', width: 800 }), /class="time"/);
 });
 
 test('sheetTime shows the end of a scene, where its check passed', () => {
