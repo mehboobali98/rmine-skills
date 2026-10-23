@@ -79,26 +79,56 @@ export function findSync(file) {
   return Math.round((light / fps) * 100) / 100;
 }
 
-export const BAND_HEIGHT = 64;
+const FRAME = { pad: 40, caption: 124, radius: 14 };
 
 /**
- * HTML for one scene's caption band: step, time (video only), caption and progress.
- * @param {{n: number, total: number, time: string|null, caption: string, width: number}} band
+ * The finished frame's size, and where the video sits inside it.
+ * @param {{width: number, height: number}} viewport
+ * @returns {{width: number, height: number, x: number, y: number}}
+ */
+export function frameSize({ width, height }) {
+  return { width: width + FRAME.pad * 2, height: height + FRAME.pad + FRAME.caption, x: FRAME.pad, y: FRAME.pad };
+}
+
+/**
+ * HTML for one scene's frame: a light canvas with a transparent rounded window for the video, and the caption below.
+ * @param {{n: number, total: number, time: string|null, length: string|null, caption: string, subject: string,
+ *   viewport: {width: number, height: number}}} frame
  * @returns {string}
  */
-export function bandHtml({ n, total, time, caption, width }) {
+export function frameHtml({ n, total, time, length, caption, subject, viewport }) {
   const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const dots = Array.from({ length: total }, (_, i) => (i < n ? '<i class="on"></i>' : '<i></i>')).join('');
+  const size = frameSize(viewport);
+  const { x, y } = size;
+  const w = viewport.width;
+  const h = viewport.height;
+  const r = FRAME.radius;
+  const hole = `M0 0H${size.width}V${size.height}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}`
+    + `V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}`
+    + `A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
+  const bars = Array.from({ length: total }, (_, i) => {
+    if (i < n - 1) return '<i class="done"></i>';
+    return i === n - 1 ? '<i class="now"></i>' : '<i class=""></i>';
+  }).join('');
   return `<!doctype html><html><head><style>
-html,body{margin:0;background:#0f1115}
-.band{box-sizing:border-box;width:${width}px;height:${BAND_HEIGHT}px;display:flex;align-items:center;gap:16px;padding:0 28px;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#f5f6f8;border-top:1px solid #23262d}
-.step{font-weight:600;font-size:13px;letter-spacing:.06em;color:#0f1115;background:#7dd3fc;border-radius:6px;padding:6px 9px}
-.time{font-weight:500;font-size:15px;color:#8b919c;font-variant-numeric:tabular-nums;min-width:38px}
-.text{font-weight:500;font-size:20px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dots{margin-left:auto;display:flex;gap:6px}.dots i{width:22px;height:4px;border-radius:2px;background:#2b2f37}.dots i.on{background:#7dd3fc}
-</style></head><body><div class="band"><span class="step">${n}/${total}</span>${time ? `<span class="time">${time}</span>` : ''}
-<span class="text">${escape(caption)}</span><span class="dots">${dots}</span></div></body></html>`;
+html,body{margin:0;width:${size.width}px;height:${size.height}px;background:transparent;overflow:hidden;
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.canvas{position:absolute;inset:0;clip-path:path(evenodd,"${hole}");
+background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f1f4f9 55%,#e6ebf2 100%)}
+.window{position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;
+box-shadow:0 0 0 1px rgba(15,23,42,.08),0 24px 60px -12px rgba(15,23,42,.28),0 8px 18px -8px rgba(15,23,42,.18)}
+.bars{position:absolute;left:${x + 2}px;right:${x + 2}px;top:${y + h + 30}px;display:flex;gap:6px}
+.bars i{flex:1;height:3px;border-radius:2px;background:#d6dce6}.bars i.done{background:#4f46e5}.bars i.now{background:#818cf8}
+.cap{position:absolute;left:${x + 2}px;right:${x + 2}px;top:${y + h + 46}px;display:flex;align-items:flex-end;gap:32px}
+.left{flex:1;min-width:0}
+.step{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#4f46e5;margin-bottom:6px}
+.text{font-size:30px;font-weight:650;letter-spacing:-.01em;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.right{text-align:right;color:#64748b;font-size:14px;font-weight:500;line-height:1.6;white-space:nowrap}
+.time{font-variant-numeric:tabular-nums;color:#0f172a;font-weight:600}
+</style></head><body><div class="canvas"></div><div class="window"></div><div class="bars">${bars}</div>
+<div class="cap"><div class="left"><div class="step">Step ${n} of ${total}</div><div class="text">${escape(caption)}</div></div>
+<div class="right"><div>${escape(subject)}</div>${time ? `<div class="time">${time} / ${length}</div>` : ''}</div></div>
+</body></html>`;
 }
 
 /**

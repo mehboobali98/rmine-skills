@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  planEncode, renderComment, sheetTime, ffmetadata, BAND_HEIGHT,
+  planEncode, renderComment, sheetTime, ffmetadata, frameSize,
 } from './lib.mjs';
 
 const MB = 1024 * 1024;
@@ -25,30 +25,37 @@ function parseArgs(argv) {
 
 const ffmpeg = (args) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...args]);
 
-function bandsOf(segments, outDir) {
-  return segments.every((s) => s.band) ? segments.map((s) => path.join(outDir, s.band)) : [];
+function framesOf(segments, outDir) {
+  return segments.every((s) => s.frame) ? segments.map((s) => path.join(outDir, s.frame)) : [];
 }
 
-function joinSegments(segments, bands) {
+function framePad(file) {
+  const [w, h] = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file])
+    .toString().trim().split(',').map(Number);
+  const f = frameSize({ width: w, height: h });
+  return `pad=${f.width}:${f.height}:${f.x}:${f.y}:color=0xf1f4f9`;
+}
+
+function joinSegments(segments, frames, pad) {
   const trims = segments.map((s, i) => `[0:v]trim=start=${s.start}:end=${s.end},setpts=PTS-STARTPTS[s${i}]`);
   const inputs = segments.map((_, i) => `[s${i}]`).join('');
   const joined = `${trims.join(';')};${inputs}concat=n=${segments.length}:v=1:a=0`;
-  if (!bands.length) return `${joined}[out]`;
+  if (!frames.length) return `${joined}[out]`;
   let elapsed = 0;
   const overlays = segments.map((s, i) => {
     const from = elapsed;
     elapsed += s.end - s.start;
     const last = i === segments.length - 1 ? '[out]' : `[b${i}]`;
-    return `[${i === 0 ? 'padded' : `b${i - 1}`}][${i + 2}:v]overlay=0:H-h:enable='between(t,${from.toFixed(3)},${elapsed.toFixed(3)})'${last}`;
+    return `[${i === 0 ? 'padded' : `b${i - 1}`}][${i + 2}:v]overlay=0:0:enable='between(t,${from.toFixed(3)},${elapsed.toFixed(3)})'${last}`;
   });
-  return `${joined}[cat];[cat]pad=iw:ih+${BAND_HEIGHT}:0:0:color=0x0f1115[padded];${overlays.join(';')}`;
+  return `${joined}[cat];[cat]${pad}[padded];${overlays.join(';')}`;
 }
 
-function encode(raw, segments, out, rate, meta, bands) {
+function encode(raw, segments, out, rate, meta, frames) {
   const quality = rate
     ? ['-b:v', `${rate}k`, '-maxrate', `${rate}k`, '-bufsize', `${rate * 2}k`]
     : ['-crf', String(CRF)];
-  ffmpeg(['-i', raw, '-i', meta, ...bands.flatMap((b) => ['-i', b]), '-filter_complex', joinSegments(segments, bands),
+  ffmpeg(['-i', raw, '-i', meta, ...frames.flatMap((b) => ['-i', b]), '-filter_complex', joinSegments(segments, frames, framePad(raw)),
     '-map', '[out]', '-map_chapters', '1',
     '-c:v', 'libx264', '-preset', 'medium', ...quality,
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out]);
@@ -56,8 +63,8 @@ function encode(raw, segments, out, rate, meta, bands) {
 }
 
 function encodeToFit(raw, segments, out, opts, meta) {
-  const bands = bandsOf(segments, opts.outDir);
-  if (encode(raw, segments, out, null, meta, bands) <= opts.limitBytes) return null;
+  const frames = framesOf(segments, opts.outDir);
+  if (encode(raw, segments, out, null, meta, frames) <= opts.limitBytes) return null;
   const durationSec = segments.reduce((sum, s) => sum + s.end - s.start, 0);
   const plan = planEncode({ durationSec, limitBytes: opts.limitBytes });
   if (plan.tooBig) {
@@ -65,7 +72,7 @@ function encodeToFit(raw, segments, out, opts, meta) {
     return `${Math.round(durationSec)} s of video needs at least ${plan.neededKbps} kbps to stay readable, which does not fit ${opts.limitMb} MB.`;
   }
   for (const rate of [plan.bitrateKbps, Math.floor(plan.bitrateKbps * RETRY_FACTOR)]) {
-    if (encode(raw, segments, out, rate, meta, bands) <= opts.limitBytes) {
+    if (encode(raw, segments, out, rate, meta, frames) <= opts.limitBytes) {
       process.stdout.write(`Re-encoded at ${rate} kbps to fit ${opts.limitMb} MB\n`);
       return null;
     }
@@ -87,8 +94,10 @@ function splitPoint(chapters) {
 function contactSheet(raw, chapters, outDir) {
   const frames = chapters.map((c, i) => {
     const file = path.join(outDir, `.sheet-${String(i + 1).padStart(2, '0')}.png`);
-    const band = c.band ? ['-i', path.join(outDir, c.band), '-filter_complex', '[0][1]vstack,scale=640:-2'] : ['-vf', 'scale=640:-2'];
-    ffmpeg(['-ss', String(sheetTime(c)), '-i', raw, ...band, '-frames:v', '1', file]);
+    const framed = c.frame
+      ? ['-i', path.join(outDir, c.frame), '-filter_complex', `[0]${framePad(raw)}[p];[p][1]overlay=0:0,scale=640:-2`]
+      : ['-vf', 'scale=640:-2'];
+    ffmpeg(['-ss', String(sheetTime(c)), '-i', raw, ...framed, '-frames:v', '1', file]);
     return file;
   });
   const cols = Math.min(3, frames.length);
@@ -142,9 +151,9 @@ function main() {
   if (chapters[0].start === null) {
     files = chapters.map((c) => {
       const shot = path.join(opts.outDir, `scene-${String(c.scene).padStart(2, '0')}.png`);
-      if (!c.band) return shot;
+      if (!c.frame) return shot;
       const captioned = path.join(opts.outDir, `demo-${String(c.scene).padStart(2, '0')}.png`);
-      ffmpeg(['-i', shot, '-i', path.join(opts.outDir, c.band), '-filter_complex', '[0][1]vstack', captioned]);
+      ffmpeg(['-i', shot, '-i', path.join(opts.outDir, c.frame), '-filter_complex', `[0]${framePad(shot)}[p];[p][1]overlay=0:0`, captioned]);
       return captioned;
     });
     const big = files.filter((f) => fs.statSync(f).size > opts.limitBytes);

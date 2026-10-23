@@ -3,12 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import {
-  validateScript, syncTimes, findSync, isPasswordVisible, formatTime, bandHtml, BAND_HEIGHT,
+  validateScript, syncTimes, findSync, isPasswordVisible, formatTime, frameHtml, frameSize,
 } from './lib.mjs';
 
 const TIMEOUT_MS = 5000;
 const PACE = { warmUp: 500, lead: 1200, move: 1000, drag: 2000, after: 800, hold: 1800, typeDelay: 60 };
-const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|band-\d+\.png|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
+const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|frame-\d+\.png|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
 
 class SceneFailure extends Error {
   constructor(code, message) {
@@ -238,7 +238,7 @@ async function main() {
       fs.renameSync(await video.path(), raw);
       try {
         const times = syncTimes({ marks, syncWallMs, syncVideoSec: findSync(raw) });
-        await renderBands(browser, args.outDir, script, writeChapters(args.outDir, script, times));
+        await renderFrames(browser, args.outDir, script, writeChapters(args.outDir, script, times));
       } catch (err) {
         fs.rmSync(raw, { force: true });
         failed = new SceneFailure(1, err.message);
@@ -248,7 +248,7 @@ async function main() {
     fs.rmSync(videoDir, { recursive: true, force: true });
     if (!failed) process.stdout.write(`video: ${raw}\n`);
   } else if (!failed && args.mode === 'screenshots') {
-    await renderBands(browser, args.outDir, script, writeChapters(args.outDir, script, null));
+    await renderFrames(browser, args.outDir, script, writeChapters(args.outDir, script, null));
   }
   await browser.close();
   return failed ? failed.code : 0;
@@ -272,13 +272,17 @@ function firstScene(script, scene) {
   return first;
 }
 
-async function renderBands(browser, outDir, script, chapters) {
-  const page = await browser.newPage({ viewport: { width: script.viewport.width, height: BAND_HEIGHT } });
+async function renderFrames(browser, outDir, script, chapters) {
+  const { width, height } = frameSize(script.viewport);
+  const last = chapters[chapters.length - 1];
+  const length = last.end === null ? null : formatTime(chapters.reduce((sum, c) => sum + c.end - c.start, 0));
+  const page = await browser.newPage({ viewport: { width, height } });
   for (const chapter of chapters) {
-    await page.setContent(bandHtml({
-      n: chapter.scene, total: chapters.length, time: chapter.time, caption: chapter.caption, width: script.viewport.width,
+    await page.setContent(frameHtml({
+      n: chapter.scene, total: chapters.length, time: chapter.time, length, caption: chapter.caption,
+      subject: script.subject, viewport: script.viewport,
     }));
-    await page.screenshot({ path: path.join(outDir, chapter.band) });
+    await page.screenshot({ path: path.join(outDir, chapter.frame), omitBackground: true });
   }
   await page.close();
 }
@@ -290,7 +294,7 @@ function writeChapters(outDir, script, times) {
     caption: scene.caption,
     tag: sceneTag(i + 1, script.scenes.length, times ? elapsed(i) : null),
     time: times ? formatTime(Math.round(elapsed(i) * 100) / 100) : null,
-    band: `band-${String(i + 1).padStart(2, '0')}.png`,
+    frame: `frame-${String(i + 1).padStart(2, '0')}.png`,
     criterion: scene.criterion || '',
     start: times ? times[i * 2] : null,
     end: times ? times[i * 2 + 1] : null,
