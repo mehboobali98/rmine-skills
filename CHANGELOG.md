@@ -4,6 +4,28 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.13.0
+
+### Added
+
+- **`/demo <issue>` records a feature demo and posts it to the ticket.** A
+  finished feature waited for a demo meeting before QA got it. `/demo` drives
+  the developer's locally running app through the ticket's acceptance
+  criteria, one scene each, rehearsed first and then recorded in one take with
+  a caption and a visible pointer. It posts the video, or one screenshot per
+  scene for a small feature, as one comment with a chapter list, so feedback
+  can point at a time. Scenes run as one continuous take with page loads cut
+  out, each caption carries its scene number and time, and the MP4 has chapter
+  markers. A failing scene check stops the run and nothing is
+  posted. The comment goes up only after an explicit yes, as with
+  `/spec-interview`.
+
+  This is the plugin's first Node dependency: Playwright 1.61.1, the last
+  release that runs on Node 18, installed into the plugin folder on first use.
+  `ffmpeg` encodes the video to fit Redmine's attachment limit, which is a
+  per-user setting. The saved session and every recording live outside the
+  product repo, under `~/.local/state/rmine-skills/demo/<repo>/`.
+
 ## 0.12.0
 
 ### Fixed

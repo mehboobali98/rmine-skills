@@ -1,0 +1,204 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  formatTime, renderComment, planEncode, validateScript, sheetTime, ffmetadata, syncTimes, findSync, frameHtml, frameSize, barGeometry,
+} from './lib.mjs';
+
+const MB = 1024 * 1024;
+
+const SCRIPT = {
+  issue: 123,
+  subject: 'Ticket subject',
+  mode: 'video',
+  viewport: { width: 1280, height: 800 },
+  scenes: [
+    {
+      caption: 'Filter the list by status',
+      criterion: 'Acceptance criterion text this scene proves',
+      start: '/items',
+      steps: [
+        { click: { role: 'button', name: 'Filters' } },
+        { fill: { label: 'Status' }, value: 'Open' },
+        { press: 'Enter' },
+      ],
+      expect: [{ visible: { text: '3 results' } }, { url: 'status=open' }],
+    },
+  ],
+};
+
+const withScene = (change) => {
+  const s = structuredClone(SCRIPT);
+  change(s.scenes[0], s);
+  return s;
+};
+
+test('formatTime', () => {
+  assert.equal(formatTime(0), '0:00');
+  assert.equal(formatTime(42.9), '0:42');
+  assert.equal(formatTime(90), '1:30');
+  assert.equal(formatTime(3725), '1:02:05');
+});
+
+test('renderComment matches the frozen shape', () => {
+  assert.equal(
+    renderComment({
+      subject: 'Bulk edit', branch: 'feat/x', sha: 'abc1234', dirty: false,
+      chapters: [{ start: 0, caption: 'Open the list' }, { start: 42, caption: 'Edit two rows' }],
+    }),
+    'Demo of Bulk edit, recorded on feat/x at abc1234.\n\n0:00 Open the list\n0:42 Edit two rows\n\n'
+      + "Reply with a time and what's wrong, and I'll pick it up before QA.\n",
+  );
+});
+
+test('renderComment marks a dirty tree', () => {
+  assert.match(
+    renderComment({ subject: 's', branch: 'b', sha: 'abc1234', dirty: true, chapters: [] }),
+    /^Demo of s, recorded on b at abc1234 with uncommitted changes\.\n/,
+  );
+});
+
+test('renderComment names what the demo leaves out', () => {
+  const body = renderComment({
+    subject: 's', branch: 'b', sha: 'abc1234', dirty: false,
+    chapters: [{ start: 0, caption: 'One' }],
+    omitted: [{ criterion: 'Preview cards', reason: 'the search index was not running' }],
+  });
+  assert.match(body, /\n0:00 One\n\nNot shown: Preview cards \(the search index was not running\)\.\n\nReply/);
+});
+
+test('renderComment screenshots mode numbers the scenes', () => {
+  const body = renderComment({
+    subject: 's', branch: 'b', sha: 'abc1234', dirty: false,
+    chapters: [{ start: null, caption: 'First' }, { start: null, caption: 'Second' }],
+  });
+  assert.match(body, /\n\n1\. First\n2\. Second\n\n/);
+});
+
+test('renderComment splits chapters into parts', () => {
+  const body = renderComment({
+    subject: 's', branch: 'b', sha: 'abc1234', dirty: false,
+    chapters: [
+      { start: 0, caption: 'One', part: 1 }, { start: 30, caption: 'Two', part: 1 },
+      { start: 0, caption: 'Three', part: 2 },
+    ],
+  });
+  assert.match(body, /\n\nPart 1\n0:00 One\n0:30 Two\n\nPart 2\n0:00 Three\n\n/);
+});
+
+test('planEncode', () => {
+  assert.deepEqual(planEncode({ durationSec: 100, limitBytes: 5 * MB }), { bitrateKbps: 377 });
+  assert.ok(planEncode({ durationSec: 250, limitBytes: 5 * MB }).bitrateKbps >= 150);
+});
+
+test('planEncode refuses below the floor', () => {
+  assert.deepEqual(planEncode({ durationSec: 600, limitBytes: 2 * MB }), { tooBig: true, neededKbps: 150 });
+});
+
+test('syncTimes places marks relative to the sync frame', () => {
+  assert.deepEqual(syncTimes({ marks: [10500, 12250], syncWallMs: 10000, syncVideoSec: 0.8 }), [1.3, 3.05]);
+  assert.throws(() => syncTimes({ marks: [9000], syncWallMs: 10000, syncVideoSec: 0.5 }), /started late/);
+});
+
+test('findSync finds the switch from black to white', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'demo-sync-')), 'sync.webm');
+  execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=black:size=320x200:rate=25:duration=1.2',
+    '-f', 'lavfi', '-i', 'color=white:size=320x200:rate=25:duration=2', '-filter_complex', '[0][1]concat=n=2:v=1',
+    '-c:v', 'libvpx', file]);
+  assert.ok(Math.abs(findSync(file) - 1.2) <= 0.04, `found ${findSync(file)}`);
+});
+
+test('findSync refuses a video without the switch', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'demo-sync-')), 'white.webm');
+  execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=white:size=320x200:rate=25:duration=2', '-c:v', 'libvpx', file]);
+  assert.throws(() => findSync(file), /sync/);
+});
+
+test('ffmetadata writes one chapter per scene', () => {
+  assert.equal(
+    ffmetadata([{ start: 0, end: 4.5, caption: 'One' }, { start: 4.5, end: 10, caption: 'Two = two' }]),
+    ';FFMETADATA1\n\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=4500\ntitle=One\n\n'
+      + '[CHAPTER]\nTIMEBASE=1/1000\nSTART=4500\nEND=10000\ntitle=Two \\= two\n',
+  );
+});
+
+test('frameSize puts the video in a padded window above the caption', () => {
+  assert.deepEqual(frameSize({ width: 1280, height: 800 }), { width: 1360, height: 964, x: 40, y: 40 });
+});
+
+test('frameHtml shows the step, caption, subject and time, escaped', () => {
+  const html = frameHtml({
+    n: 2, total: 5, time: '0:14', length: '0:47', caption: 'Rows <b>& more</b>', subject: 'Racks', viewport: { width: 1280, height: 800 },
+  });
+  assert.match(html, />Step 2 of 5</);
+  assert.match(html, />0:14 \/ 0:47</);
+  assert.match(html, />Racks</);
+  assert.match(html, /Rows &lt;b&gt;&amp; more&lt;\/b&gt;/);
+  assert.equal((html.match(/<i class="(done|now)?">/g) || []).length, 5);
+  assert.equal((html.match(/<i class="done">/g) || []).length, 1);
+});
+
+test('barGeometry places each step segment under the window', () => {
+  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 1), { x: 42, y: 870, width: 250, height: 4 });
+  assert.deepEqual(barGeometry({ width: 1280, height: 800 }, 5, 2), { x: 298, y: 870, width: 250, height: 4 });
+});
+
+test('frameHtml leaves the current segment open for the live fill', () => {
+  const html = frameHtml({ n: 2, total: 5, time: '0:14', length: '0:47', caption: 'c', subject: 's', viewport: { width: 1280, height: 800 } });
+  assert.match(html, /M300 870H546A2 2 0 0 1 546 874H300A2 2 0 0 1 300 870Z/);
+});
+
+test('frameHtml leaves the time out for screenshots', () => {
+  assert.doesNotMatch(frameHtml({ n: 1, total: 2, time: null, length: null, caption: 'x', subject: 's', viewport: { width: 800, height: 500 } }), /class="time"/);
+});
+
+test('sheetTime shows the end of a scene, where its check passed', () => {
+  assert.equal(sheetTime({ start: 10, end: 30 }), 29.25);
+  assert.equal(sheetTime({ start: 10, end: 10.5 }), 10.25);
+});
+
+test('validateScript accepts the documented sample', () => {
+  assert.deepEqual(validateScript(SCRIPT), []);
+});
+
+test('validateScript lets later scenes continue without a start', () => {
+  const s = structuredClone(SCRIPT);
+  s.scenes.push({ caption: 'Then save', steps: [{ press: 'Enter' }], expect: [{ text: 'Saved' }] });
+  assert.deepEqual(validateScript(s), []);
+  const first = withScene((sc) => { delete sc.start; });
+  assert.match(validateScript(first).join(), /scene 1: start/);
+});
+
+test('validateScript accepts exact matching', () => {
+  assert.deepEqual(validateScript(withScene((sc) => { sc.steps.push({ click: { role: 'option', name: '1U', exact: true } }); })), []);
+});
+
+test('validateScript accepts a drag step', () => {
+  assert.deepEqual(validateScript(withScene((sc) => { sc.steps.push({ drag: { text: 'Card' }, to: { text: 'Drop zone' } }); })), []);
+});
+
+test('validateScript names each problem', () => {
+  const cases = [
+    [withScene((_, s) => { s.scenes = []; }), /no scenes/],
+    [withScene((_, s) => { s.mode = 'gif'; }), /mode/],
+    [withScene((sc) => { sc.steps[0] = { click: { role: 'button', text: 'x' } }; }), /scene 1 step 1: .*one of/],
+    [withScene((sc) => { sc.steps.push({ scroll: { css: 'a' } }); }), /scene 1 step 4: unknown step/],
+    [withScene((sc) => { delete sc.caption; }), /scene 1: caption/],
+    [withScene((sc) => { sc.expect = []; }), /scene 1: expect/],
+    [withScene((sc) => { sc.steps[1] = { fill: { label: 'Status' } }; }), /scene 1 step 2: .*value/],
+    [withScene((sc) => { sc.expect.push({ glows: 'x' }); }), /scene 1 expect 3: unknown/],
+    [withScene((sc) => { sc.start = 'https://elsewhere.example/'; }), /scene 1: start/],
+    [withScene((sc) => { sc.steps.push({ drag: { css: '#a' } }); }), /scene 1 step 4: drag needs a to locator/],
+    [withScene((sc) => { sc.steps.push({ click: { text: 'a', exact: 'yes' } }); }), /scene 1 step 4: exact is true or false/],
+    [withScene((_, s) => { s.omitted = [{ criterion: 'x' }]; }), /omitted 1: criterion and reason/],
+    [withScene((_, s) => { s.hide = '#profiler'; }), /hide is a list of CSS selectors/],
+  ];
+  for (const [script, pattern] of cases) {
+    const errors = validateScript(script);
+    assert.equal(errors.length, 1, `${pattern}: ${errors.join('; ')}`);
+    assert.match(errors[0], pattern);
+  }
+});

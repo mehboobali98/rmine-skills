@@ -1,8 +1,8 @@
 {
   "name": "rmine-skills",
   "displayName": "rmine skills",
-  "version": "0.12.0",
-  "description": "Workflow skills built on the rmine Redmine CLI. Turns a Redmine ticket into a reviewed frontend/backend effort estimate, and measures past estimates against hours actually logged, drafts the day's time entries from git, and checks a sprint against the team's capacity.",
+  "version": "0.13.0",
+  "description": "Workflow skills built on the rmine Redmine CLI. Turns a Redmine ticket into a reviewed frontend/backend effort estimate, and measures past estimates against hours actually logged, drafts the day's time entries from git, checks a sprint against the team's capacity, and records a feature demo for the ticket.",
   "author": {
     "name": "Mehboob Ali",
     "url": "https://github.com/mehboobali98"
@@ -10,5 +10,5 @@
   "homepage": "https://github.com/mehboobali98/rmine-skills",
   "repository": "https://github.com/mehboobali98/rmine-skills",
   "license": "MIT",
-  "keywords": ["redmine", "estimation", "project-management", "rmine"]
+  "keywords": ["redmine", "estimation", "project-management", "rmine", "demo"]
 }
