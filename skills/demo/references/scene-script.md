@@ -78,6 +78,13 @@ row shows Open" is a check, "the Save button exists" is not.
 Watchers give the video a minute between other work. Every second should show
 the feature.
 
+- **Order by evidence in the ticket.** Priority the spec states (P0 before P1,
+  must before should) first, then what the customer asked for before what was
+  added internally, then the spec's own order. Risk breaks ties within a level:
+  a fixed crash or a new multi-step flow before a small change. A scene moves
+  out of that order only when it needs another scene's result. Give each
+  scene's reason in the scene list, so the developer can overrule it.
+
 - **One story, one take.** Order the scenes so each builds on the last, and
   leave `start` off every scene after the first that stays on the same page.
   Each `start` is a reload the viewer sits through.
