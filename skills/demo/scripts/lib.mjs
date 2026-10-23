@@ -81,7 +81,7 @@ export function findSync(file) {
 
 const FRAME = { pad: 40, caption: 124, radius: 14, barTop: 30, barHeight: 4, barGap: 6 };
 
-export const PROGRESS = { track: '0xe2e8f0', fill: '0x334155' };
+export const PROGRESS = { track: '0xcbd5e1', fill: '0x334155' };
 
 /**
  * The finished frame's size, and where the video sits inside it.
@@ -141,11 +141,11 @@ export function frameHtml({ n, total, time, length, caption, subject, viewport }
 html,body{margin:0;width:${size.width}px;height:${size.height}px;background:transparent;overflow:hidden;
 font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .canvas{position:absolute;inset:0;clip-path:path(evenodd,"${hole}${open}");
-background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f1f4f9 55%,#e6ebf2 100%)}
+background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f3f5f9 55%,#edf1f6 100%)}
 .window{position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;
 box-shadow:0 0 0 1px rgba(15,23,42,.08),0 24px 60px -12px rgba(15,23,42,.28),0 8px 18px -8px rgba(15,23,42,.18)}
 .bars{position:absolute;left:${x + 2}px;right:${x + 2}px;top:${bar.y}px;display:flex;gap:${FRAME.barGap}px}
-.bars i{flex:1;height:${FRAME.barHeight}px;border-radius:${FRAME.barHeight / 2}px;background:#e2e8f0}.bars i.done{background:#334155}
+.bars i{flex:1;height:${FRAME.barHeight}px;border-radius:${FRAME.barHeight / 2}px;background:#cbd5e1}.bars i.done{background:#334155}
 .bars i.now{background:${time ? 'transparent' : '#334155'}}
 .cap{position:absolute;left:${x + 2}px;right:${x + 2}px;top:${y + h + 46}px;display:flex;align-items:flex-end;gap:32px}
 .left{flex:1;min-width:0}
