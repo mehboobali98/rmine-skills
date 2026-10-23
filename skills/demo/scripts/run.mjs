@@ -9,7 +9,11 @@ import {
 const TIMEOUT_MS = 5000;
 const SETTLE_MS = 10000;
 const PACE = { warmUp: 500, lead: 1200, move: 1000, drag: 2000, after: 800, hold: 1800, typeDelay: 60 };
-const OUTPUTS = /^(raw\.webm|chapters\.json|omitted\.json|frame-\d+\.png|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
+const WARM_UP_PAGE = '<body style="margin:0;height:100vh;background:#000">'
+  + '<i id="tick" style="position:fixed;left:0;top:0;width:1px;height:1px"></i>'
+  + '<script>let n = 0; (function repaint() { tick.style.background = n++ % 2 ? "#010101" : "#020202";'
+  + ' requestAnimationFrame(repaint); })();</script>';
+const OUTPUTS =/^(raw\.webm|chapters\.json|omitted\.json|frame-\d+\.png|scene-\d+\.png|failure\.(png|aria\.txt)|look\.(png|aria\.txt))$/;
 
 class SceneFailure extends Error {
   constructor(code, message) {
@@ -196,7 +200,7 @@ async function main() {
   page.setDefaultTimeout(60000);
   let syncWallMs = null;
   if (filmed) {
-    await page.setContent('<body style="margin:0;height:100vh;background:#000">');
+    await page.setContent(WARM_UP_PAGE);
     await page.waitForTimeout(PACE.warmUp);
     await page.evaluate(() => { document.body.style.background = '#fff'; });
     syncWallMs = Date.now();

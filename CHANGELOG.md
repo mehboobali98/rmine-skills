@@ -4,6 +4,21 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.13.1
+
+### Fixed
+
+- **`/demo` recordings on Linux often failed with "No sync frame found".**
+  ([#20](https://github.com/mehboobali98/rmine-skills/issues/20)) Chapter
+  times are measured from the moment a black warm-up page turns white. The
+  page was static, so the browser painted it once, and Playwright records a
+  frame only when the browser sends one after a paint. On Linux that first
+  paint often came before the frames started flowing, so the video opened on
+  white and the switch was never seen. In the Playwright Linux image, 1 to 7
+  of the 23 recording tests failed on every run. The warm-up page now repaints
+  one corner pixel on every animation frame, so the black is recorded from the
+  moment frames start. Five runs in the same image pass 23 of 23.
+
 ## 0.13.0
 
 ### Added
