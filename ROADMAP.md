@@ -19,7 +19,7 @@ doubled is noise being counted as signal.
 
 ### `/demo`, next steps
 
-`/demo` records plain footage of a local app. Two things it leaves out on
+`/demo` records plain footage of a local app. Three things it leaves out on
 purpose, each worth its own step:
 
 1. **A voice-over cut.** A separate skill that takes `demo.mp4` and
@@ -28,6 +28,12 @@ purpose, each worth its own step:
 2. **Recording against staging.** Local only for now, because every developer
    signs in with their own local account. Staging needs a shared way to sign
    in that keeps passwords out of the skill.
+3. **Videos on Google Drive.** Redmine's attachment limit caps how long a demo
+   can be. When Google Drive for desktop is set up, copy `demo.mp4` into its
+   synced folder, share it with a group the user names, and post the link
+   instead of the file. The Drive connector can't carry the upload itself: it
+   takes the file as base64 text inside one message, which is too big even for a
+   short video. Fall back to the attachment when Drive isn't set up.
 
 ### Deliberately not building
 
