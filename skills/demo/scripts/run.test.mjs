@@ -210,6 +210,8 @@ test('record passes the omitted criteria on to assembly', async () => {
 test('screenshots writes one image per scene', async () => {
   const r = await run('screenshots', { ...SCRIPT, mode: 'screenshots' });
   assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /^PASS 1 Hide closed items$/m);
+  assert.match(r.stdout, /^PASS 2 Create an item$/m);
   assert.ok(exists(r.out, 'scene-01.png'));
   assert.ok(exists(r.out, 'scene-02.png'));
   const chapters = JSON.parse(fs.readFileSync(path.join(r.out, 'chapters.json'), 'utf8'));
