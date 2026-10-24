@@ -220,10 +220,11 @@ async function main() {
       marks.push(Date.now());
       if (stopAfter !== undefined) {
         process.stdout.write(`STOPPED ${n} ${scene.caption} after step ${args.steps}\n`);
-      } else if (args.mode === 'screenshots') {
-        await page.evaluate(() => window.__demo.hidePointer());
-        await page.screenshot({ path: path.join(args.outDir, `scene-${String(n).padStart(2, '0')}.png`) });
       } else {
+        if (args.mode === 'screenshots') {
+          await page.evaluate(() => window.__demo.hidePointer());
+          await page.screenshot({ path: path.join(args.outDir, `scene-${String(n).padStart(2, '0')}.png`) });
+        }
         process.stdout.write(`PASS ${n} ${scene.caption}\n`);
       }
     } catch (err) {
