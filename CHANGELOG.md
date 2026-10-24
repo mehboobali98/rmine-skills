@@ -4,6 +4,15 @@ Rubric changes move every estimate the team produces, so they are called out
 here explicitly. Anchor changes should link the `/calibrate` evidence behind
 them.
 
+## 0.13.2
+
+### Fixed
+
+- **`/demo screenshots` now prints `PASS` for each scene, as rehearse and
+  record do.** It wrote one image per scene but printed nothing for a scene
+  that passed, so the run's output couldn't be read the way step 3 of the
+  skill describes.
+
 ## 0.13.1
 
 ### Fixed
